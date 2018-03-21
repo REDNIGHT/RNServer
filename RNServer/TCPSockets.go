@@ -279,9 +279,9 @@ type _TCPSocketsStateInfo struct {
 func (this *TCPSockets) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
 	si := RNCore.NewStateInfo(this, *counts[0])
 
-	si.Map = map[string]interface{}{
-		"maxSocketCount":     this.MaxSocketCount,
-		"socketCount":        len(this.sockets),
-		"socketsByNameCount": len(this.socketsByName)}
+	si.Values = map[string]uint{
+		"maxSocketCount":     uint(this.MaxSocketCount),
+		"socketCount":        uint(len(this.sockets)),
+		"socketsByNameCount": uint(len(this.socketsByName))}
 	return si
 }

@@ -2,8 +2,9 @@
 package RNCore
 
 import (
-	//"fmt"
+	"fmt"
 	//"reflect"
+	"github.com/robfig/cron"
 	"time"
 )
 
@@ -13,11 +14,26 @@ type State struct {
 	Node
 
 	stateTicker time.Duration //= 60
+	saveMaxSpec string
+	//每隔5秒执行一次："*/5 * * * * ?"
+	//每隔1分钟执行一次："0 */1 * * * ?"
+	//每天23点执行一次："0 0 23 * * ?"
+	//每天凌晨1点执行一次："0 0 1 * * ?"
+	//每月1号凌晨1点执行一次："0 0 1 1 * ?"
+	//在26分、29分、33分执行一次："0 26,29,33 * * * ?"
+	//每天的0点、13点、18点、21点都执行一次："0 0 0,13,18,21 * * ?"
 
 	In chan *StateInfo
 
-	stateInfos   []interface{}
-	stateInfoMap map[string]interface{}
+	stateInfos   []*StateInfo
+	stateInfoMap map[string]*StateInfo
+
+	maxStateInfos []MaxStateInfo
+}
+
+type MaxStateInfo struct {
+	Value uint
+	Time  time.Time
 }
 
 type IState interface {
@@ -33,22 +49,16 @@ type StateInfo struct {
 
 	InCount uint
 
-	Map map[string]interface{}
+	Values    map[string]uint
+	StrValues map[string]string
 }
 
 func NewStateInfo(node INode, inCount uint) *StateInfo {
-	return &StateInfo{Root().Name(), node.Name(), node.GetOutNodeInfos(), inCount, nil}
+	return &StateInfo{Root().Name(), node.Name(), node.GetOutNodeInfos(), inCount, nil, nil}
 }
 
-/*func (this *StateInfo) GetInNames() []string {
-	return []string{}
-}
-func (this *StateInfo) GetInCounts() []uint {
-	return []uint{}
-}*/
-
-func NewState(name string, stateTicker time.Duration) *State {
-	return &State{NewNode(name), stateTicker, make(chan *StateInfo, InChanCount), make([]interface{}, 0), make(map[string]interface{})}
+func NewState(name string, stateTicker time.Duration, saveMaxSpec string) *State {
+	return &State{NewNode(name), stateTicker, saveMaxSpec, make(chan *StateInfo, InChanCount), make([]*StateInfo, 0), make(map[string]*StateInfo), nil}
 }
 
 /*func (this *State) SetOut(outs []*chan<- interface{}) {
@@ -57,6 +67,16 @@ func NewState(name string, stateTicker time.Duration) *State {
 
 func (this *State) Run() {
 
+	//
+	saveMax := make(chan bool)
+	c := cron.New()
+	if len(this.saveMaxSpec) <= 0 {
+		this.saveMaxSpec = "0 0 6 * * ?" //每天6点执行一次
+	}
+	c.AddFunc(this.saveMaxSpec, func() { saveMax <- true })
+	c.Start()
+
+	//
 	save := make(chan bool)
 
 	//
@@ -67,7 +87,7 @@ func (this *State) Run() {
 		//
 		select {
 		case <-time.After(time.Second * this.stateTicker):
-			this.stateInfos = make([]interface{}, 0)
+			this.stateInfos = make([]*StateInfo, 0)
 
 			go func() {
 				Root().State()
@@ -78,7 +98,11 @@ func (this *State) Run() {
 			this.save()
 			continue
 
-			//
+		case <-saveMax:
+			this.saveMax()
+			continue
+
+		//
 		case stateInfo := <-this.In:
 
 			this.stateInfos = append(this.stateInfos, stateInfo)
@@ -101,51 +125,170 @@ func (this *State) Run() {
 
 //
 func (this *State) save() {
+	count := this.csvRowCount()
+
+	//
+	//----------------------------------------------------------------------
+	//csv内容
+	_ = this.csvRow(count)
+	//todo...
+	//row 往csv文件尾部添加
+
+	//
+	//----------------------------------------------------------------------
+	//csv文件名
+	_ = csvFileName()
+	//todo...
+	//csv文件名 一天一个csv文件
+
+	//
+	//----------------------------------------------------------------------
+	//新csv文件第一排数据
+	_ = this.getFirstRow(count)
+
+	//
+	//max
+	//----------------------------------------------------------------------
+	this.max(count)
 }
 
-func (this *State) _save(stateInfo *StateInfo) {
-	/*
-		//----------------------------------------------------------------------
-		//csv内容
-		row := make([]string, 0)
-		infos := reflect.ValueOf(stateInfo).Elem()
-		for i := 0; i < infos.NumField(); i++ {
-			row = append(row, fmt.Sprintf("v%", infos.Field(i).Interface()))
+func (this *State) saveMax() {
+	//todo...
+	//每天保持一次最大值
+	v_row := make([]string, len(this.maxStateInfos))
+	t_row := make([]string, len(this.maxStateInfos))
+	for i, v := range this.maxStateInfos {
+		//一行时间
+		//一行最大值
+		v_row[i] = fmt.Sprintf("%v", v.Value)
+		t_row[i] = v.Time.String()
+	}
+	_, _ = v_row, t_row
+	//todo...
+	//往csv文件尾部添加
+
+	//
+	//----------------------------------------------------------------------
+	//csv文件名
+	_ = csvMaxFileName()
+	//todo...
+	//一年一个csv文件
+
+	//
+	//----------------------------------------------------------------------
+	//新csv文件第一排数据
+	_ = this.getFirstRow(len(this.maxStateInfos))
+
+	//
+	//
+	//clear
+	this.maxStateInfos = nil
+}
+
+func basePath() string {
+	return "states" //todo... 加上exe所在的目录
+}
+
+func csvFileName() string {
+	Time := time.Now()
+	return fmt.Sprintf("%v/%v-%v.%v.%v.state.csv", basePath(), Root().Name(), Time.Year(), Time.Month(), Time.Day())
+}
+func csvMaxFileName() string {
+	Time := time.Now()
+	return fmt.Sprintf("%v/%v.%v.max_state.csv", basePath(), Root().Name(), Time.Year())
+}
+func (this *State) csvRowCount() int {
+	count := 0
+	for _, si := range this.stateInfos {
+		count++
+		if si.Values != nil {
+			count += len(si.Values)
+		}
+		if si.StrValues != nil {
+			count += len(si.StrValues)
+		}
+		count++ //space
+	}
+	return count
+}
+func (this *State) csvRow(count int) []string {
+	row := make([]string, count)
+	index := 0
+	for _, si := range this.stateInfos {
+		row[index] = fmt.Sprintf("%v", si.InCount)
+		index++
+
+		if si.Values != nil {
+			for _, v := range si.Values {
+				row[index] = fmt.Sprintf("%v", v)
+				index++
+			}
+		}
+		if si.StrValues != nil {
+			for _, v := range si.StrValues {
+				row[index] = v
+				index++
+			}
+		}
+		count++ //space
+	}
+	return row
+}
+
+func (this *State) getFirstRow(count int) []string {
+
+	firstRow := make([]string, count)
+	index := 0
+	for _, si := range this.stateInfos {
+		firstRow[index] = fmt.Sprintf("%v.%v.%v", si.RootName, si.NodeName, "inCount")
+		index++
+
+		if si.Values != nil {
+			for k, _ := range si.Values {
+				firstRow[index] = k
+				index++
+			}
+		}
+		if si.StrValues != nil {
+			for k, _ := range si.StrValues {
+				firstRow[index] = k
+				index++
+			}
+		}
+		count++ //space
+	}
+
+	return firstRow
+}
+
+func (this *State) max(count int) {
+	if this.maxStateInfos == nil {
+		this.maxStateInfos = make([]MaxStateInfo, count)
+	}
+
+	index := 0
+	for _, si := range this.stateInfos {
+		if si.InCount > this.maxStateInfos[index].Value {
+			this.maxStateInfos[index].Value = si.InCount
+			this.maxStateInfos[index].Time = time.Now()
+		}
+		index++
+
+		if si.Values != nil {
+			for _, v := range si.Values {
+				if v > this.maxStateInfos[index].Value {
+					this.maxStateInfos[index].Value = v
+					this.maxStateInfos[index].Time = time.Now()
+				}
+				index++
+			}
 		}
 
-		inCounts := stateInfo.GetInCounts()
-		for i := 0; i < len(inCounts); i++ {
-			row = append(row, fmt.Sprintf("v%", inCounts[i]))
+		if si.StrValues != nil {
+			index += len(si.StrValues)
 		}
-
-		_ = row
-		//todo...
-		//row 往csv文件尾部添加
-
-		//----------------------------------------------------------------------
-		//csv文件名
-		Time := time.Now()
-		csvFileName := fmt.Sprintf("%v.%v.%v-%v.%v.%v.csv", Root().Name(), reflect.TypeOf(stateInfo).String(), stateInfo.NodeName(), Time.Year(), Time.Month(), Time.Day())
-
-		_ = csvFileName
-		//todo...
-		//csv文件名 一天一个csv文件
-
-		//----------------------------------------------------------------------
-		//新csv文件第一排数据
-		firstRow := make([]string, 0)
-		infosT := reflect.TypeOf(stateInfo)
-		for i := 0; i < infosT.NumField(); i++ {
-			firstRow = append(firstRow, infosT.Field(i).Name)
-		}
-
-		inNames := stateInfo.GetInNames()
-		firstRow = append(firstRow, inNames...)
-
-		_ = firstRow
-		//新csv文件第一排数据
-		//todo...
-	*/
+		count++ //space
+	}
 }
 
 //

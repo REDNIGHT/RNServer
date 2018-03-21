@@ -81,6 +81,6 @@ type _TCPAcceptStateInfo struct {
 
 func (this *TCPAccept) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
 	si := RNCore.NewStateInfo(this, *counts[0])
-	si.Map = map[string]interface{}{"ip": this.ip}
+	si.StrValues = map[string]string{"ip": this.ip}
 	return si
 }
