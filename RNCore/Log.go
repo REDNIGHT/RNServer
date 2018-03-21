@@ -2,7 +2,10 @@ package RNCore
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"reflect"
+	//"strings"
 	"time"
 )
 
@@ -98,20 +101,16 @@ func (this *Log) Run() {
 	}
 }
 
+func baseLogPath() string {
+	return AutoNewPath(ExecPath() + "\\log")
+}
+
 func (this *Log) save(logData *LogData) {
-	/*save data
-	Time := logData.Time
-	ServerName
-	NodeName := logData.NodeName
-	Level := logData.Level
-	Log := logData.Log
-	*/
 
-	/*csvFileName :=*/
-	fmt.Sprintf("%v.%v.%v.log.csv", logData.Time.Year(), logData.Time.Month(), logData.Time.Day())
+	csvFileName := fmt.Sprintf("%v\\%v.%v.%v.log.csv", baseLogPath(), logData.Time.Year(), logData.Time.Month(), logData.Time.Day())
 
-	//todo...
-	//save csv
+	buffer := fmt.Sprintf("%v	%v	%v	%v	%v\n", logData.Time, Root().Name(), logData.NodeName, logData.Level, logData.Log)
+	ioutil.WriteFile(csvFileName, []byte(buffer), os.ModeAppend)
 }
 
 //

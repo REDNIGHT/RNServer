@@ -5,6 +5,8 @@ import (
 	"fmt"
 	//"reflect"
 	"github.com/robfig/cron"
+	"io/ioutil"
+	"os"
 	"time"
 )
 
@@ -129,22 +131,21 @@ func (this *State) save() {
 
 	//
 	//----------------------------------------------------------------------
-	//csv内容
-	_ = this.csvRow(count)
-	//todo...
-	//row 往csv文件尾部添加
-
-	//
-	//----------------------------------------------------------------------
 	//csv文件名
-	_ = csvFileName()
-	//todo...
-	//csv文件名 一天一个csv文件
+	csvFile := csvFileName()
+	if b, _ := Exists(csvFile); b == false {
+		//新csv文件第一排数据
+		firstRow := this.getFirstRow(count)
+		buffer := getRowBuffer(firstRow)
+		ioutil.WriteFile(csvFile, []byte(buffer), os.ModeAppend)
+	}
 
 	//
 	//----------------------------------------------------------------------
-	//新csv文件第一排数据
-	_ = this.getFirstRow(count)
+	//csv内容
+	row := this.csvRow(count)
+	buffer := getRowBuffer(row)
+	ioutil.WriteFile(csvFile, []byte(buffer), os.ModeAppend)
 
 	//
 	//max
@@ -153,31 +154,30 @@ func (this *State) save() {
 }
 
 func (this *State) saveMax() {
-	//todo...
+
+	//csv文件名
+	csvMaxFile := csvMaxFileName()
+	if b, _ := Exists(csvMaxFile); b == false {
+		//新csv文件第一排数据
+		firstRow := this.getFirstRow(len(this.maxStateInfos))
+		buffer := getRowBuffer(firstRow)
+		ioutil.WriteFile(csvMaxFile, []byte(buffer), os.ModeAppend)
+	}
+
+	//
 	//每天保持一次最大值
-	v_row := make([]string, len(this.maxStateInfos))
 	t_row := make([]string, len(this.maxStateInfos))
+	v_row := make([]string, len(this.maxStateInfos))
 	for i, v := range this.maxStateInfos {
 		//一行时间
 		//一行最大值
-		v_row[i] = fmt.Sprintf("%v", v.Value)
 		t_row[i] = v.Time.String()
+		v_row[i] = fmt.Sprintf("%v", v.Value)
 	}
-	_, _ = v_row, t_row
-	//todo...
-	//往csv文件尾部添加
-
-	//
-	//----------------------------------------------------------------------
-	//csv文件名
-	_ = csvMaxFileName()
-	//todo...
-	//一年一个csv文件
-
-	//
-	//----------------------------------------------------------------------
-	//新csv文件第一排数据
-	_ = this.getFirstRow(len(this.maxStateInfos))
+	buffer := getRowBuffer(t_row)
+	ioutil.WriteFile(csvMaxFile, []byte(buffer), os.ModeAppend)
+	buffer = getRowBuffer(v_row)
+	ioutil.WriteFile(csvMaxFile, []byte(buffer), os.ModeAppend)
 
 	//
 	//
@@ -185,17 +185,17 @@ func (this *State) saveMax() {
 	this.maxStateInfos = nil
 }
 
-func basePath() string {
-	return "states" //todo... 加上exe所在的目录
+func baseStatesPath() string {
+	return AutoNewPath(ExecPath() + "\\states")
 }
 
 func csvFileName() string {
 	Time := time.Now()
-	return fmt.Sprintf("%v/%v-%v.%v.%v.state.csv", basePath(), Root().Name(), Time.Year(), Time.Month(), Time.Day())
+	return fmt.Sprintf("%v\\%v-%v.%v.%v.state.csv", baseStatesPath(), Root().Name(), Time.Year(), Time.Month(), Time.Day())
 }
 func csvMaxFileName() string {
 	Time := time.Now()
-	return fmt.Sprintf("%v/%v.%v.max_state.csv", basePath(), Root().Name(), Time.Year())
+	return fmt.Sprintf("%v\\max_%v.%v.state.csv", baseStatesPath(), Root().Name(), Time.Year())
 }
 func (this *State) csvRowCount() int {
 	count := 0
@@ -289,6 +289,14 @@ func (this *State) max(count int) {
 		}
 		count++ //space
 	}
+}
+func getRowBuffer(row []string) string {
+	buffer := ""
+	for _, r := range row {
+		buffer += r + "\t"
+	}
+	buffer += "\n"
+	return buffer
 }
 
 //
