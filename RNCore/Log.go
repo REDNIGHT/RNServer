@@ -115,11 +115,6 @@ func (this *Log) save(logData *LogData) {
 }
 
 //
-type _LogStateInfo struct {
-	StateInfo
-	InCount uint
-}
-
-func (this *Log) OnStateInfo(counts ...*uint) IStateInfo {
-	return &_LogStateInfo{StateInfo{this}, *counts[0]}
+func (this *Log) OnStateInfo(counts ...*uint) *StateInfo {
+	return NewStateInfo(this, *counts[0])
 }

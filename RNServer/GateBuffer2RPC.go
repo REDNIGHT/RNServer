@@ -65,11 +65,7 @@ func (this *GateBuffer2RPC) onSocketBuffer(socketBuffer *SocketBuffer) {
 }
 
 //
-type _GateBuffer2RPCStateInfo struct {
-	RNCore.StateInfo
-	InCount uint
-}
 
-func (this *GateBuffer2RPC) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
-	return &_GateBuffer2RPCStateInfo{RNCore.StateInfo{this}, *counts[0]}
+func (this *GateBuffer2RPC) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
+	return RNCore.NewStateInfo(this, *counts[0])
 }

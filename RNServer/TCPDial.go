@@ -34,7 +34,11 @@ func (this *TCPDial) SetOut(outAddConn chan<- *Name_Conn, node_chan_name string)
 func (this *TCPDial) Run() {
 
 	//
+	var inCount uint = 0
 	for {
+		inCount++
+
+		//
 		if this.conn == nil {
 			conn, err := net.Dial("tcp", this.ip)
 
@@ -63,7 +67,7 @@ func (this *TCPDial) Run() {
 			continue
 
 		case <-this.StateSig:
-			this.OnState()
+			this.OnState(&inCount)
 			this.StateSig <- true
 			continue
 
@@ -75,11 +79,8 @@ func (this *TCPDial) Run() {
 }
 
 //
-type _TCPDialStateInfo struct {
-	RNCore.StateInfo
-	Ip string
-}
-
-func (this *TCPDial) OnState() RNCore.IStateInfo {
-	return &_TCPDialStateInfo{RNCore.StateInfo{this}, this.ip}
+func (this *TCPDial) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
+	si := RNCore.NewStateInfo(this, *counts[0])
+	si.Map = map[string]interface{}{"ip": this.ip}
+	return si
 }

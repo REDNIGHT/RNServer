@@ -62,11 +62,6 @@ func (this *Router2Socket) Run() {
 }
 
 //
-type _Router2SocketStateInfo struct {
-	RNCore.StateInfo
-	InCount uint
-}
-
-func (this *Router2Socket) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
-	return &_Router2SocketStateInfo{RNCore.StateInfo{this}, *counts[0]}
+func (this *Router2Socket) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
+	return RNCore.NewStateInfo(this, *counts[0])
 }

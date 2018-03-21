@@ -143,12 +143,6 @@ func destroy(n INode) {
 }
 
 //
-type _rootStateInfo struct {
-	StateInfo
-	//todo...
-	//cpu 内存 硬盘使用情况
-}
-
-func (this *root) OnStateInfo(counts ...*uint) IStateInfo {
-	return &_rootStateInfo{StateInfo{this}}
+func (this *root) OnStateInfo(counts ...*uint) *StateInfo {
+	return NewStateInfo(this, 0)
 }

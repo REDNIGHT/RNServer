@@ -48,11 +48,6 @@ func (this *Broadcast) Run() {
 }
 
 //
-type _BroadcastStateInfo struct {
-	StateInfo
-	InCount uint
-}
-
-func (this *Broadcast) OnStateInfo(counts ...*uint) IStateInfo {
-	return &_BroadcastStateInfo{StateInfo{this}, *counts[0]}
+func (this *Broadcast) OnStateInfo(counts ...*uint) *StateInfo {
+	return NewStateInfo(this, *counts[0])
 }

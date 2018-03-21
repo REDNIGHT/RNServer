@@ -77,10 +77,10 @@ func (this *TCPAccept) Close() {
 type _TCPAcceptStateInfo struct {
 	RNCore.StateInfo
 	Ip string
-
-	InCount uint
 }
 
-func (this *TCPAccept) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
-	return &_TCPAcceptStateInfo{RNCore.StateInfo{this}, this.ip, *counts[0]}
+func (this *TCPAccept) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
+	si := RNCore.NewStateInfo(this, *counts[0])
+	si.Map = map[string]interface{}{"ip": this.ip}
+	return si
 }

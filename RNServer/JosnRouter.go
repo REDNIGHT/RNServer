@@ -85,11 +85,6 @@ func (this *JosnRouter) rpc(josnData *JosnData, socketID uintptr) {
 }
 
 //
-type _JosnRouterStateInfo struct {
-	RNCore.StateInfo
-	InCount uint
-}
-
-func (this *JosnRouter) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
-	return &_JosnRouterStateInfo{RNCore.StateInfo{this}, *counts[0]}
+func (this *JosnRouter) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
+	return RNCore.NewStateInfo(this, *counts[0])
 }

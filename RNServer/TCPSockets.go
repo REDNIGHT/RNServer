@@ -276,13 +276,12 @@ type _TCPSocketsStateInfo struct {
 	InBroadcast        int*/
 }
 
-func (this *TCPSockets) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
-	return &_TCPSocketsStateInfo{
-		RNCore.StateInfo{this},
+func (this *TCPSockets) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
+	si := RNCore.NewStateInfo(this, *counts[0])
 
-		uint(this.MaxSocketCount),
-		uint(len(this.sockets)),
-		uint(len(this.socketsByName)),
-
-		*counts[0]}
+	si.Map = map[string]interface{}{
+		"maxSocketCount":     this.MaxSocketCount,
+		"socketCount":        len(this.sockets),
+		"socketsByNameCount": len(this.socketsByName)}
+	return si
 }

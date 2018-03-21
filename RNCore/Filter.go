@@ -77,11 +77,6 @@ func (this *Filter) Run() {
 }
 
 //
-type _FilterStateInfo struct {
-	StateInfo
-	InCount uint
-}
-
-func (this *Filter) OnStateInfo(counts ...*uint) IStateInfo {
-	return &_FilterStateInfo{StateInfo{this}, *counts[0]}
+func (this *Filter) OnStateInfo(counts ...*uint) *StateInfo {
+	return NewStateInfo(this, *counts[0])
 }

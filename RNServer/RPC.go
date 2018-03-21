@@ -75,11 +75,6 @@ func (this *RPC) onRPC(content *Gate2RPCContent) {
 }
 
 //
-type _RPCStateInfo struct {
-	RNCore.StateInfo
-	InCount uint
-}
-
-func (this *RPC) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
-	return &_RPCStateInfo{RNCore.StateInfo{this}, *counts[0]}
+func (this *RPC) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
+	return RNCore.NewStateInfo(this, *counts[0])
 }

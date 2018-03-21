@@ -50,11 +50,6 @@ func (this *Diversion) Run() {
 }
 
 //
-type _DiversionStateInfo struct {
-	StateInfo
-	InCount uint
-}
-
-func (this *Diversion) OnStateInfo(counts ...*uint) IStateInfo {
-	return &_DiversionStateInfo{StateInfo{this}, *counts[0]}
+func (this *Diversion) OnStateInfo(counts ...*uint) *StateInfo {
+	return NewStateInfo(this, *counts[0])
 }

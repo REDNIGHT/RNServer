@@ -60,13 +60,6 @@ func (this *Node2) _OnState(v interface{}) {
 }
 
 //
-type _Node2StateInfo struct {
-	StateInfo
-	InCount uint
-	//InNames  []string
-	//InCounts []uint
-}
-
 /*func (this *_Node2StateInfo) GetInNames() []string {
 	return this.InNames
 }
@@ -74,7 +67,7 @@ func (this *_Node2StateInfo) GetInLens() []uint {
 	return this.InCounts
 }*/
 
-func (this *Node2) OnStateInfo(counts ...*uint) IStateInfo {
+func (this *Node2) OnStateInfo(counts ...*uint) *StateInfo {
 	/*l := len(this.selectCases) - 2 + 1 //-2是去掉CloseSig,State +1是InCount
 	inNames := make([]string, l)
 	for i := 0; i < l; i++ {
@@ -82,5 +75,5 @@ func (this *Node2) OnStateInfo(counts ...*uint) IStateInfo {
 	}
 	inNames[len(inNames)-1] = "InCount"*/
 
-	return &_Node2StateInfo{StateInfo{this}, this.inCount}
+	return NewStateInfo(this, this.inCount)
 }

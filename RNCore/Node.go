@@ -82,9 +82,9 @@ func (this *Node) OnState(counts ...*uint) {
 		*counts[i] = 0
 	}
 }
-func (this *Node) OnStateInfo(counts ...*uint) IStateInfo {
+func (this *Node) OnStateInfo(counts ...*uint) *StateInfo {
 	panic("//todo...  OnState")
-	return &StateInfo{this}
+	return NewStateInfo(this, 0)
 }
 func (this *Node) GetOutNodeInfos() []string {
 	return this.OutNodeInfos
