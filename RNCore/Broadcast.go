@@ -1,7 +1,7 @@
 package RNCore
 
 import (
-	"time"
+//"time"
 )
 
 type Broadcast struct {
@@ -25,8 +25,10 @@ func (this *Broadcast) SetOut(outs []chan<- interface{}, outNodeInfos ...string)
 
 func (this *Broadcast) Run() {
 
-	//
+	var inCount uint = 0
 	for {
+		inCount++
+
 		//
 		select {
 		case in := <-this.In:
@@ -34,8 +36,9 @@ func (this *Broadcast) Run() {
 				this.outs[i] <- in
 			}
 
-		case <-time.After(time.Second * StateTime):
-			this.State()
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
 			continue
 		case <-this.CloseSig:
 			this.CloseSig <- true
@@ -47,9 +50,9 @@ func (this *Broadcast) Run() {
 //
 type _BroadcastStateInfo struct {
 	StateInfo
-	In int
+	InCount uint
 }
 
-func (this *Broadcast) OnState() IStateInfo {
-	return &_BroadcastStateInfo{StateInfo{this}, len(this.In)}
+func (this *Broadcast) OnStateInfo(counts ...*uint) IStateInfo {
+	return &_BroadcastStateInfo{StateInfo{this}, *counts[0]}
 }

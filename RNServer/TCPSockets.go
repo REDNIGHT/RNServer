@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"io"
 	"net"
-	"time"
+	//"time"
 	"unsafe"
 )
 import "RNCore"
@@ -12,7 +12,7 @@ import "RNCore"
 type TCPSockets struct {
 	RNCore.Node
 
-	MaxConnNum int
+	MaxSocketCount int
 
 	sockets       map[uintptr]*Socket
 	socketsByName map[string]*Socket
@@ -50,12 +50,12 @@ type SocketBufferByName struct {
 	Buffer []byte
 }
 
-func NewTCPSockets(name string, maxConnNum int) *TCPSockets {
+func NewTCPSockets(name string, maxSocketCount int) *TCPSockets {
 	return &TCPSockets{
-		Node:          RNCore.NewNode(name),
-		MaxConnNum:    maxConnNum,
-		sockets:       make(map[uintptr]*Socket),
-		socketsByName: make(map[string]*Socket),
+		Node:           RNCore.NewNode(name),
+		MaxSocketCount: maxSocketCount,
+		sockets:        make(map[uintptr]*Socket),
+		socketsByName:  make(map[string]*Socket),
 
 		InAddConn:            make(chan net.Conn, RNCore.InChanCount),
 		InAddConnWithName:    make(chan *Name_Conn, RNCore.InChanCount),
@@ -88,17 +88,20 @@ func (this *TCPSockets) SetOut(
 
 func (this *TCPSockets) Run() {
 	//
+	var inCount uint = 0
 	for {
+		inCount++
+
 		select {
 		case conn := <-this.InAddConn:
-			if len(this.sockets) >= this.MaxConnNum {
+			if len(this.sockets) >= this.MaxSocketCount {
 				conn.Close()
 				continue
 			}
 			this.addSocket(conn, "")
 
 		case c_n := <-this.InAddConnWithName:
-			if len(this.sockets) >= this.MaxConnNum {
+			if len(this.sockets) >= this.MaxSocketCount {
 				c_n.Conn.Close()
 				continue
 			}
@@ -130,8 +133,9 @@ func (this *TCPSockets) Run() {
 			this.removeSocketByName(name)
 
 			//
-		case <-time.After(time.Second * RNCore.StateTime):
-			this.State()
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
 			continue
 
 		case <-this.CloseSig:
@@ -253,9 +257,13 @@ func write(conn net.Conn, buffer []byte) error {
 type _TCPSocketsStateInfo struct {
 	RNCore.StateInfo
 
-	MaxConnNum int
+	MaxSocketCount     uint
+	socketsCount       uint
+	socketsByNameCount uint
 
-	sockets       int
+	InCount uint
+
+	/*sockets       int
 	socketsByName int
 
 	InAddConn            int
@@ -265,24 +273,16 @@ type _TCPSocketsStateInfo struct {
 
 	InSendBuffer       int
 	InSendBufferByName int
-	InBroadcast        int
+	InBroadcast        int*/
 }
 
-func (this *TCPSockets) OnState() RNCore.IStateInfo {
+func (this *TCPSockets) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
 	return &_TCPSocketsStateInfo{
 		RNCore.StateInfo{this},
 
-		this.MaxConnNum,
+		uint(this.MaxSocketCount),
+		uint(len(this.sockets)),
+		uint(len(this.socketsByName)),
 
-		len(this.sockets),
-		len(this.socketsByName),
-
-		len(this.InAddConn),
-		len(this.InAddConnWithName),
-		len(this.InRemoveSocketByName),
-		len(this.InRemoveSocket),
-
-		len(this.InSendBuffer),
-		len(this.InSendBufferByName),
-		len(this.InBroadcast)}
+		*counts[0]}
 }

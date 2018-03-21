@@ -35,10 +35,10 @@ func (this *TCPAccept) Run() {
 	this.listener = l
 
 	//
-	this.State()
-
-	//
+	var inCount uint = 0
 	for {
+		inCount++
+
 		//l.(*net.TCPListener).SetDeadline(time.Now().Add(time.Second))
 
 		conn, err := l.Accept()
@@ -53,6 +53,13 @@ func (this *TCPAccept) Run() {
 
 		//
 		select {
+
+		//
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
+			continue
+
 		case <-this.CloseSig:
 			this.CloseSig <- true
 			return
@@ -70,8 +77,10 @@ func (this *TCPAccept) Close() {
 type _TCPAcceptStateInfo struct {
 	RNCore.StateInfo
 	Ip string
+
+	InCount uint
 }
 
-func (this *TCPAccept) OnState() RNCore.IStateInfo {
-	return &_TCPAcceptStateInfo{RNCore.StateInfo{this}, this.ip}
+func (this *TCPAccept) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
+	return &_TCPAcceptStateInfo{RNCore.StateInfo{this}, this.ip, *counts[0]}
 }

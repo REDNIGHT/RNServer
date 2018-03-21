@@ -6,7 +6,7 @@ package RNServer
 import (
 	"RNCore"
 	"encoding/json"
-	"time"
+	//"time"
 )
 
 //import "unsafe"
@@ -50,7 +50,10 @@ func (this *JosnRouter) SetOut(outRouter chan<- *Router, node_chan_name string) 
 func (this *JosnRouter) Run() {
 
 	//
+	var inCount uint = 0
 	for {
+		inCount++
+
 		//
 		select {
 		case socketBuffer := <-this.InSocketsBuffer:
@@ -64,9 +67,11 @@ func (this *JosnRouter) Run() {
 			this.rpc(josnData, socketBuffer.SocketID)
 
 			//
-		case <-time.After(time.Second * RNCore.StateTime):
-			this.State()
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
 			continue
+
 		case <-this.CloseSig:
 			this.CloseSig <- true
 			return
@@ -82,9 +87,9 @@ func (this *JosnRouter) rpc(josnData *JosnData, socketID uintptr) {
 //
 type _JosnRouterStateInfo struct {
 	RNCore.StateInfo
-	InSocketsBuffer int
+	InCount uint
 }
 
-func (this *JosnRouter) OnState() RNCore.IStateInfo {
-	return &_JosnRouterStateInfo{RNCore.StateInfo{this}, len(this.InSocketsBuffer)}
+func (this *JosnRouter) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
+	return &_JosnRouterStateInfo{RNCore.StateInfo{this}, *counts[0]}
 }

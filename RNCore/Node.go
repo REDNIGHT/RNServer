@@ -2,7 +2,7 @@ package RNCore
 
 import (
 	"fmt"
-	"time"
+	//"time"
 )
 
 type INode interface {
@@ -10,6 +10,7 @@ type INode interface {
 	Init()
 	Register()
 	Run()
+	State()
 	Close()
 	Destroy()
 
@@ -23,6 +24,8 @@ type Node struct {
 	name string
 
 	//
+	StateSig chan bool
+	//beginStateTime time.Time
 	OutNodeInfos []string
 
 	//
@@ -30,7 +33,7 @@ type Node struct {
 }
 
 func NewNode(name string) Node {
-	return Node{name, nil, make(chan bool, 1)}
+	return Node{name, make(chan bool), nil, make(chan bool)}
 }
 
 func (this *Node) Name() string { return this.name }
@@ -39,12 +42,16 @@ func (this *Node) Init()     {}
 func (this *Node) Register() {}
 func (this *Node) Run() {
 
+	var inCount uint = 0
 	for {
+		inCount++
+
 		//
 		select {
 
-		case <-time.After(time.Second * StateTime):
-			this.State()
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
 			continue
 
 		case <-this.CloseSig:
@@ -56,12 +63,45 @@ func (this *Node) Run() {
 
 func (this *Node) Close() {
 	this.CloseSig <- true
-}
-func (this *Node) Destroy() {
 	<-this.CloseSig
 	close(this.CloseSig)
 }
+func (this *Node) Destroy() {
+}
 
+//
+func (this *Node) State() {
+	this.StateSig <- true
+	<-this.StateSig
+}
+func (this *Node) OnState(counts ...*uint) {
+	InState <- IState(this).OnStateInfo(counts...)
+
+	//this.beginStateTime = time.Now()
+	for i := 0; i < len(counts); i++ {
+		*counts[i] = 0
+	}
+}
+func (this *Node) OnStateInfo(counts ...*uint) IStateInfo {
+	panic("//todo...  OnState")
+	return &StateInfo{this}
+}
+func (this *Node) GetOutNodeInfos() []string {
+	return this.OutNodeInfos
+}
+func (this *Node) SetOutNodeInfos(outName string, outNodeInfos ...string) {
+	this.OutNodeInfos = outNodeInfos
+
+	if len(this.OutNodeInfos) == 1 {
+		this.OutNodeInfos[0] = fmt.Sprintf(outName+".%v", this.OutNodeInfos[0])
+	} else {
+		for i := 0; i < len(this.OutNodeInfos); i++ {
+			this.OutNodeInfos[i] = fmt.Sprintf(outName+"%v.%v", i, this.OutNodeInfos[i])
+		}
+	}
+}
+
+//
 func (this *Node) Log(format string, a ...interface{}) {
 	Print(this, printLogLevel, format, a)
 }
@@ -73,28 +113,4 @@ func (this *Node) Error(format string, a ...interface{}) {
 }
 func (this *Node) Debug(format string, a ...interface{}) {
 	Debug(this, printDebugLevel, format, a)
-}
-
-//
-func (this *Node) State() {
-	InState <- IState(this).OnState()
-}
-func (this *Node) OnState() IStateInfo {
-	panic("//todo...  OnState")
-	return &StateInfo{this}
-}
-func (this *Node) GetOutNodeInfos() []string {
-	return this.OutNodeInfos
-}
-
-func (this *Node) SetOutNodeInfos(outName string, outNodeInfos ...string) {
-	this.OutNodeInfos = outNodeInfos
-
-	if len(this.OutNodeInfos) == 1 {
-		this.OutNodeInfos[0] = fmt.Sprintf("out.%v", this.OutNodeInfos[0])
-	} else {
-		for i := 0; i < len(this.OutNodeInfos); i++ {
-			this.OutNodeInfos[i] = fmt.Sprintf("out%v.%v", i, this.OutNodeInfos[i])
-		}
-	}
 }

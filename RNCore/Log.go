@@ -73,7 +73,11 @@ func NewLog(name string, _default bool) *Log {
 }*/
 
 func (this *Log) Run() {
+
+	var inCount uint = 0
 	for {
+		inCount++
+
 		//
 		select {
 		case logData := <-this.In:
@@ -82,9 +86,11 @@ func (this *Log) Run() {
 			this.save(logData)
 			continue
 
-		case <-time.After(time.Second * StateTime):
-			this.State()
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
 			continue
+
 		case <-this.CloseSig:
 			this.CloseSig <- true
 			return
@@ -111,9 +117,9 @@ func (this *Log) save(logData *LogData) {
 //
 type _LogStateInfo struct {
 	StateInfo
-	In int
+	InCount uint
 }
 
-func (this *Log) OnState() IStateInfo {
-	return &_LogStateInfo{StateInfo{this}, len(this.In)}
+func (this *Log) OnStateInfo(counts ...*uint) IStateInfo {
+	return &_LogStateInfo{StateInfo{this}, *counts[0]}
 }

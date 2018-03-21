@@ -1,7 +1,7 @@
 package RNCore
 
 import (
-	"time"
+//"time"
 )
 
 type IFilterName interface {
@@ -41,7 +41,10 @@ func (this *Filter) AddFilter(filterName string, pickUp bool, out chan<- interfa
 
 func (this *Filter) Run() {
 
+	var inCount uint = 0
 	for {
+		inCount++
+
 		//
 		select {
 
@@ -61,8 +64,9 @@ func (this *Filter) Run() {
 				this.out <- iFilter
 			}
 
-		case <-time.After(time.Second * StateTime):
-			this.State()
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
 			continue
 
 		case <-this.CloseSig:
@@ -75,9 +79,9 @@ func (this *Filter) Run() {
 //
 type _FilterStateInfo struct {
 	StateInfo
-	In int
+	InCount uint
 }
 
-func (this *Filter) OnState() IStateInfo {
-	return &_FilterStateInfo{StateInfo{this}, len(this.In)}
+func (this *Filter) OnStateInfo(counts ...*uint) IStateInfo {
+	return &_FilterStateInfo{StateInfo{this}, *counts[0]}
 }

@@ -3,7 +3,7 @@ package RNServer
 import (
 	"RNCore"
 	"encoding/json"
-	"time"
+	//"time"
 )
 
 type Router2Socket struct {
@@ -33,7 +33,10 @@ func (this *Router2Socket) SetOut(outSendBufferByName chan<- *SocketBufferByName
 func (this *Router2Socket) Run() {
 
 	//
+	var inCount uint = 0
 	for {
+		inCount++
+
 		//
 		select {
 		case router := <-this.InRouter:
@@ -46,9 +49,11 @@ func (this *Router2Socket) Run() {
 			this.outSendBufferByName <- &SocketBufferByName{router.JosnData.S, buffer}
 
 			//
-		case <-time.After(time.Second * RNCore.StateTime):
-			this.State()
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
 			continue
+
 		case <-this.CloseSig:
 			this.CloseSig <- true
 			return
@@ -59,9 +64,9 @@ func (this *Router2Socket) Run() {
 //
 type _Router2SocketStateInfo struct {
 	RNCore.StateInfo
-	InRouter int
+	InCount uint
 }
 
-func (this *Router2Socket) OnState() RNCore.IStateInfo {
-	return &_Router2SocketStateInfo{RNCore.StateInfo{this}, len(this.InRouter)}
+func (this *Router2Socket) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
+	return &_Router2SocketStateInfo{RNCore.StateInfo{this}, *counts[0]}
 }

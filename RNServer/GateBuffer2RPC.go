@@ -3,7 +3,7 @@ package RNServer
 import (
 	"RNCore"
 	"encoding/json"
-	"time"
+	//"time"
 )
 
 type GateBuffer2RPC struct {
@@ -28,7 +28,10 @@ func (this *GateBuffer2RPC) SetOut(outGate2RPCContent chan<- *Gate2RPCContent, n
 func (this *GateBuffer2RPC) Run() {
 
 	//
+	var inCount uint = 0
 	for {
+		inCount++
+
 		//
 		select {
 
@@ -36,9 +39,12 @@ func (this *GateBuffer2RPC) Run() {
 			this.onSocketBuffer(socketBuffer)
 			continue
 
-		case <-time.After(time.Second * RNCore.StateTime):
-			this.State()
+			//
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
 			continue
+
 		case <-this.CloseSig:
 			this.CloseSig <- true
 			return
@@ -61,9 +67,9 @@ func (this *GateBuffer2RPC) onSocketBuffer(socketBuffer *SocketBuffer) {
 //
 type _GateBuffer2RPCStateInfo struct {
 	RNCore.StateInfo
-	InSocketsBuffer int
+	InCount uint
 }
 
-func (this *GateBuffer2RPC) OnState() RNCore.IStateInfo {
-	return &_GateBuffer2RPCStateInfo{RNCore.StateInfo{this}, len(this.InSocketsBuffer)}
+func (this *GateBuffer2RPC) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
+	return &_GateBuffer2RPCStateInfo{RNCore.StateInfo{this}, *counts[0]}
 }

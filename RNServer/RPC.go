@@ -4,7 +4,7 @@ import (
 	"RNCore"
 	"encoding/json"
 	"reflect"
-	"time"
+	//"time"
 )
 
 type RPC struct {
@@ -29,16 +29,22 @@ func (this *RPC) SetOut(functions interface{}, outNodeInfos ...string) {
 func (this *RPC) Run() {
 
 	//
+	var inCount uint = 0
 	for {
+		inCount++
+
 		//
 		select {
 		case content := <-this.InGate2RPCContent:
 			this.onRPC(content)
 			continue
 
-		case <-time.After(time.Second * RNCore.StateTime):
-			this.State()
+			//
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
 			continue
+
 		case <-this.CloseSig:
 			this.CloseSig <- true
 			return
@@ -71,9 +77,9 @@ func (this *RPC) onRPC(content *Gate2RPCContent) {
 //
 type _RPCStateInfo struct {
 	RNCore.StateInfo
-	InGate2RPCContent int
+	InCount uint
 }
 
-func (this *RPC) OnState() RNCore.IStateInfo {
-	return &_RPCStateInfo{RNCore.StateInfo{this}, len(this.InGate2RPCContent)}
+func (this *RPC) OnStateInfo(counts ...*uint) RNCore.IStateInfo {
+	return &_RPCStateInfo{RNCore.StateInfo{this}, *counts[0]}
 }

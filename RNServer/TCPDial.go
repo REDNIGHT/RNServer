@@ -34,8 +34,6 @@ func (this *TCPDial) SetOut(outAddConn chan<- *Name_Conn, node_chan_name string)
 func (this *TCPDial) Run() {
 
 	//
-	this.State()
-
 	for {
 		if this.conn == nil {
 			conn, err := net.Dial("tcp", this.ip)
@@ -62,6 +60,11 @@ func (this *TCPDial) Run() {
 		//
 		select {
 		case <-delta:
+			continue
+
+		case <-this.StateSig:
+			this.OnState()
+			this.StateSig <- true
 			continue
 
 		case <-this.CloseSig:

@@ -1,17 +1,24 @@
 package RNCore
 
+import (
+	"os"
+	"os/signal"
+)
+
 type root struct {
-	name  string
+	Node
 	nodes []INode
 }
 
-var _root = &root{ServerName, make([]INode, 0)}
+var _root *root
 
+func NewRoot(serverName string) *root {
+	_root = &root{NewNode(serverName), make([]INode, 0)}
+	return _root
+}
 func Root() *root {
 	return _root
 }
-
-func (this *root) Name() string { return this.name }
 
 func (this *root) Add(node INode) {
 	if this.Get(node.Name()) != nil {
@@ -59,9 +66,47 @@ func (this *root) Run() {
 
 		n.Log("Run()")
 	}
+
+	//
+	go func() {
+
+		// close
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, os.Kill)
+		sig := <-c
+		this.Log("closing down (signal: %v)", sig)
+
+		this.Node.Close()
+	}()
+
+	//
+	for {
+		//
+		select {
+
+		case <-this.StateSig:
+			this.OnState()
+			this.StateSig <- true
+			continue
+
+		case <-this.CloseSig:
+			this.CloseSig <- true
+			return
+		}
+	}
+}
+
+func (this *root) State() {
+	this.Node.State()
+
+	for i := 0; i < len(this.nodes); i++ {
+		n := this.nodes[i]
+		n.State()
+	}
 }
 
 func (this *root) Close() {
+
 	for i := len(this.nodes) - 1; i >= 0; i-- {
 
 		n := this.nodes[i]
@@ -95,4 +140,15 @@ func destroy(n INode) {
 	}()*/
 
 	n.Destroy()
+}
+
+//
+type _rootStateInfo struct {
+	StateInfo
+	//todo...
+	//cpu 内存 硬盘使用情况
+}
+
+func (this *root) OnStateInfo(counts ...*uint) IStateInfo {
+	return &_rootStateInfo{StateInfo{this}}
 }

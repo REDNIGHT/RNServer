@@ -1,7 +1,7 @@
 package RNCore
 
 import (
-	"time"
+//"time"
 )
 
 type Diversion struct {
@@ -32,12 +32,16 @@ func (this *Diversion) Run() {
 	}
 
 	//
+	var inCount uint = 0
 	for {
+		inCount++
 		//
 		select {
-		case <-time.After(time.Second * StateTime):
-			this.State()
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
 			continue
+
 		case <-this.CloseSig:
 			this.CloseSig <- true
 			return
@@ -48,9 +52,9 @@ func (this *Diversion) Run() {
 //
 type _DiversionStateInfo struct {
 	StateInfo
-	In int
+	InCount uint
 }
 
-func (this *Diversion) OnState() IStateInfo {
-	return &_DiversionStateInfo{StateInfo{this}, len(this.In)}
+func (this *Diversion) OnStateInfo(counts ...*uint) IStateInfo {
+	return &_DiversionStateInfo{StateInfo{this}, *counts[0]}
 }
