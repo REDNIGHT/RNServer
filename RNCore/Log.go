@@ -1,11 +1,11 @@
 package RNCore
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
-	//"strings"
 	"time"
 )
 
@@ -31,7 +31,7 @@ func Debug(node interface{}, format string, a ...interface{}) {
 
 func doPrintf(node interface{}, printLevel string, format string, a ...interface{}) *LogData {
 
-	return &LogData{time.Now(), reflect.TypeOf(node).String() + "." + getNodeName(node), printLevel, fmt.Sprintf(format, a...)}
+	return &LogData{time.Now(), Root().Name(), reflect.TypeOf(node).String() + "." + getNodeName(node), printLevel, fmt.Sprintf(format, a...)}
 }
 
 func getNodeName(node interface{}) string {
@@ -54,26 +54,27 @@ func getNodeName(node interface{}) string {
 //--------------------------------------------------------------------------------------------------------
 type Log struct {
 	Node
+
 	In chan *LogData
 }
 
 var InLog chan *LogData = nil
 
 type LogData struct {
-	Time time.Time
-	//ServerName string
+	Time     time.Time
+	RootName string
 	NodeName string
 	Level    string
 	Log      string
 }
 
-func NewLog(name string, _default bool) *Log {
-	return &Log{NewNode(name), make(chan *LogData, InChanCount)}
+func NewLog(name string) *Log {
+	log := &Log{NewNode(name), make(chan *LogData, InChanCount)}
+	if InLog == nil {
+		InLog = log.In
+	}
+	return log
 }
-
-/*func (this *Log) SetOut(outs []*chan<- interface{}) {
-	this.outs = outs
-}*/
 
 func (this *Log) Run() {
 
@@ -106,14 +107,62 @@ func baseLogPath() string {
 }
 
 func (this *Log) save(logData *LogData) {
-
 	csvFileName := fmt.Sprintf("%v\\%v.%v.%v.log.csv", baseLogPath(), logData.Time.Year(), logData.Time.Month(), logData.Time.Day())
 
-	buffer := fmt.Sprintf("%v	%v	%v	%v	%v\n", logData.Time, Root().Name(), logData.NodeName, logData.Level, logData.Log)
+	buffer := fmt.Sprintf("%v	%v	%v	%v	%v\n", logData.Time, logData.RootName, logData.NodeName, logData.Level, logData.Log)
 	ioutil.WriteFile(csvFileName, []byte(buffer), os.ModeAppend)
 }
 
 //
 func (this *Log) OnStateInfo(counts ...*uint) *StateInfo {
 	return NewStateInfo(this, *counts[0])
+}
+
+//----------------------------------------------------------------------------------------------------
+type LogProxy struct {
+	Node
+
+	In  chan *LogData
+	out chan<- []byte
+}
+
+func NewLogProxy(name string) *LogProxy {
+	logProxy := &LogProxy{NewNode(name), make(chan *LogData, InChanCount), nil}
+	InLog = logProxy.In
+	return logProxy
+}
+
+func (this *LogProxy) SetOut(out chan<- []byte, node_chan_name string) {
+	this.out = out
+
+	//
+	this.SetOutNodeInfos("out", node_chan_name)
+}
+
+func (this *LogProxy) Run() {
+
+	var inCount uint = 0
+	for {
+		inCount++
+
+		//
+		select {
+		case logData := <-this.In:
+
+			fmt.Println("%v>%v>%v", logData.NodeName, logData.Level, logData.Log)
+
+			buffer, _ := json.Marshal(logData)
+			this.out <- buffer
+			continue
+
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
+			continue
+
+		case <-this.CloseSig:
+			this.CloseSig <- true
+			return
+		}
+	}
 }

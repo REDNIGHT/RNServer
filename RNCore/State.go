@@ -1,9 +1,9 @@
-//todo...
 package RNCore
 
 import (
 	"fmt"
 	//"reflect"
+	"encoding/json"
 	"github.com/robfig/cron"
 	"io/ioutil"
 	"os"
@@ -25,10 +25,12 @@ type State struct {
 	//在26分、29分、33分执行一次："0 26,29,33 * * * ?"
 	//每天的0点、13点、18点、21点都执行一次："0 0 0,13,18,21 * * ?"
 
-	In chan *StateInfo
+	In      chan *StateInfo
+	InProxy chan *StateInfo
 
-	stateInfos   []*StateInfo
-	stateInfoMap map[string]*StateInfo
+	stateInfos      []*StateInfo
+	stateInfosProxy []*StateInfo
+	stateInfoMap    map[string]*StateInfo
 
 	maxStateInfos []MaxStateInfo
 }
@@ -55,12 +57,30 @@ type StateInfo struct {
 	StrValues map[string]string
 }
 
+func (this *StateInfo) key() string {
+	return this.RootName + "." + this.NodeName
+}
+
 func NewStateInfo(node INode, inCount uint) *StateInfo {
 	return &StateInfo{Root().Name(), node.Name(), node.GetOutNodeInfos(), inCount, nil, nil}
 }
 
 func NewState(name string, stateTicker time.Duration, saveMaxSpec string) *State {
-	return &State{NewNode(name), stateTicker, saveMaxSpec, make(chan *StateInfo, InChanCount), make([]*StateInfo, 0), make(map[string]*StateInfo), nil}
+	state := &State{NewNode(name),
+		stateTicker,
+		saveMaxSpec,
+		make(chan *StateInfo, InChanCount),
+		make(chan *StateInfo, InChanCount),
+		make([]*StateInfo, 0),
+		make([]*StateInfo, 0),
+		make(map[string]*StateInfo),
+		nil}
+
+	if InState != nil {
+		panic("InState != nil")
+	}
+	InState = state.In
+	return state
 }
 
 /*func (this *State) SetOut(outs []*chan<- interface{}) {
@@ -91,10 +111,19 @@ func (this *State) Run() {
 		case <-time.After(time.Second * this.stateTicker):
 			this.stateInfos = make([]*StateInfo, 0)
 
+			//
+			this.stateInfos = append(this.stateInfos, this.stateInfosProxy...)
+			for _, si := range this.stateInfosProxy {
+				this.stateInfoMap[si.key()] = si
+			}
+			this.stateInfosProxy = make([]*StateInfo, 0)
+
+			//
 			go func() {
 				Root().State()
 				save <- true
 			}()
+
 			continue
 		case <-save:
 			this.save()
@@ -108,7 +137,13 @@ func (this *State) Run() {
 		case stateInfo := <-this.In:
 
 			this.stateInfos = append(this.stateInfos, stateInfo)
-			this.stateInfoMap[stateInfo.NodeName] = stateInfo
+			this.stateInfoMap[stateInfo.key()] = stateInfo
+
+			continue
+
+		case stateInfo := <-this.InProxy:
+
+			this.stateInfosProxy = append(this.stateInfosProxy, stateInfo)
 
 			continue
 
@@ -302,4 +337,74 @@ func getRowBuffer(row []string) string {
 //
 func (this *State) OnStateInfo(counts ...*uint) *StateInfo {
 	return NewStateInfo(this, *counts[0])
+}
+
+//----------------------------------------------------------------------------------------------------------------
+
+type StateProxy struct {
+	Node
+
+	stateTicker time.Duration //= 60
+	saveMaxSpec string
+	//每隔5秒执行一次："*/5 * * * * ?"
+	//每隔1分钟执行一次："0 */1 * * * ?"
+	//每天23点执行一次："0 0 23 * * ?"
+	//每天凌晨1点执行一次："0 0 1 * * ?"
+	//每月1号凌晨1点执行一次："0 0 1 1 * ?"
+	//在26分、29分、33分执行一次："0 26,29,33 * * * ?"
+	//每天的0点、13点、18点、21点都执行一次："0 0 0,13,18,21 * * ?"
+
+	In chan *StateInfo
+
+	out chan<- []byte
+}
+
+func NewStateProxy(name string, stateTicker time.Duration, saveMaxSpec string) *StateProxy {
+	state := &StateProxy{NewNode(name), stateTicker, saveMaxSpec, make(chan *StateInfo, InChanCount), nil}
+
+	if InState != nil {
+		panic("InState != nil")
+	}
+
+	InState = state.In
+	return state
+}
+
+func (this *StateProxy) SetOut(out chan<- []byte, node_chan_name string) {
+	this.out = out
+
+	//
+	this.SetOutNodeInfos("out", node_chan_name)
+}
+
+func (this *StateProxy) Run() {
+	//
+	var inCount uint = 0
+	for {
+		inCount++
+
+		//
+		select {
+
+		case <-time.After(time.Second * this.stateTicker):
+			go func() { Root().State() }()
+			continue
+
+			//
+		case stateInfo := <-this.In:
+
+			buffer, _ := json.Marshal(stateInfo)
+			this.out <- buffer
+			continue
+
+		case <-this.StateSig:
+			this.OnState(&inCount)
+			this.StateSig <- true
+			continue
+
+		case <-this.CloseSig:
+			this.CloseSig <- true
+			return
+		}
+	}
 }
