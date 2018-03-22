@@ -37,7 +37,7 @@ func (this *SocketBuffer2Router) Out(out func(*Router)) {
 	this.out = out
 }
 
-func (this *SocketBuffer2Router) Go() {
+func (this *SocketBuffer2Router) Run() {
 	go func() {
 		for {
 			select {

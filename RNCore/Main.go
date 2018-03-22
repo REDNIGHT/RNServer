@@ -3,7 +3,10 @@ package RNCore
 import ()
 
 func mian() {
-	root := NewRoot("testS")
+	root := NewRoot("test...")
+
+	//root.AddNode(node)
+	//root.AddMinNode(node)
 
 	root.Init()
 	root.Register()

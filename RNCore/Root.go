@@ -7,31 +7,39 @@ import (
 
 type root struct {
 	Node
-	nodes []INode
+	minNodes []IMinNode
+	nodes    []INode
 }
 
 var _root *root
 
 func NewRoot(serverName string) *root {
-	_root = &root{NewNode(serverName), make([]INode, 0)}
+	if _root != nil {
+		panic(_root != nil)
+	}
+	_root = &root{NewNode(serverName), make([]IMinNode, 0), make([]INode, 0)}
 	return _root
 }
 func Root() *root {
 	return _root
 }
 
-func (this *root) Add(node INode) {
-	if this.Get(node.Name()) != nil {
+func (this *root) AddNode(node IMinNode) {
+	if this.GetNode(node.Name()) != nil {
 		panic("Get(node.Name()) != nil  node.Name()=" + node.Name())
 	}
 
-	this.nodes = append(this.nodes, node)
+	this.minNodes = append(this.minNodes, node)
+
+	if node.(INode) != nil {
+		this.nodes = append(this.nodes, node.(INode))
+	}
 }
 
-func (this *root) Get(name string) INode {
-	for i := 0; i < len(this.nodes); i++ {
-		if this.nodes[i].Name() == name {
-			return this.nodes[i]
+func (this *root) GetNode(name string) IMinNode {
+	for i := 0; i < len(this.minNodes); i++ {
+		if this.minNodes[i].Name() == name {
+			return this.minNodes[i]
 		}
 	}
 
@@ -61,9 +69,9 @@ func (this *root) Register() {
 }
 
 func (this *root) Run() {
-	for i := 0; i < len(this.nodes); i++ {
+	for i := 0; i < len(this.minNodes); i++ {
 
-		n := this.nodes[i]
+		n := this.minNodes[i]
 		go n.Run()
 
 		n.Log("Run()")
@@ -136,7 +144,7 @@ func destroy(n INode) {
 
 //
 func (this *root) State() {
-	this.Node.State()
+	//this.Node.State()
 
 	for i := 0; i < len(this.nodes); i++ {
 		n := this.nodes[i]
@@ -145,7 +153,8 @@ func (this *root) State() {
 }
 
 func (this *root) OnStateInfo(counts ...*uint) *StateInfo {
-	return NewStateInfo(this, 0)
+	panic("not call this func...")
+	return nil
 }
 
 func (this *root) DebugChanState() {

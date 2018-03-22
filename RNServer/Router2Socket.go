@@ -23,7 +23,7 @@ func NewRouter2Socket(name string) *Router2Socket {
 	return &Router2Socket{RNCore.NewMinNode(name), make(chan *Router, RNCore.InChanMinCount), nil}
 }
 
-func (this *Router2Socket) Go() {
+func (this *Router2Socket) Run() {
 	go func() {
 		for {
 

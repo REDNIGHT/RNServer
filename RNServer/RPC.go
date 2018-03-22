@@ -23,7 +23,7 @@ func (this *RPC) Out(out interface{}) {
 	this.out = reflect.ValueOf(out).Elem()
 }
 
-func (this *RPC) Go() {
+func (this *RPC) Run() {
 	go func() {
 		for {
 			select {

@@ -4,6 +4,13 @@ import (
 //"time"
 )
 
+type IMinNode interface {
+	Name() string
+	Run()
+
+	Log(format string, a ...interface{})
+}
+
 type INode interface {
 	Name() string
 	Init()
@@ -36,7 +43,7 @@ func NewNode(name string) Node {
 func (this *Node) Init()     {}
 func (this *Node) Register() {}
 func (this *Node) Run() {
-	panic("//todo...")
+	this.Panic("//todo... Run")
 
 	var inCount uint = 0
 	for {
@@ -71,11 +78,12 @@ func (this *Node) OnState(counts ...*uint) {
 	}
 }
 func (this *Node) OnStateInfo(counts ...*uint) *StateInfo {
-	panic("//todo...  OnState")
+	this.Panic("//todo...  OnState")
 	return NewStateInfo(this, 0)
 }
 
 func (this *Node) DebugChanState() {
+	this.Panic("//todo...  DebugChanState")
 	this.OnDebugChanState("StateSig", len(this.StateSig))
 	this.OnDebugChanState("CloseSig", len(this.CloseSig))
 }

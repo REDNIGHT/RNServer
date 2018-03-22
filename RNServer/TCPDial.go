@@ -24,7 +24,7 @@ func NewTCPDial(name string, ip string) *TCPDial {
 	return &TCPDial{RNCore.NewMinNode(name), ip, nil, nil}
 }
 
-func (this *TCPDial) Go() {
+func (this *TCPDial) Run() {
 	go func() {
 		for {
 			//

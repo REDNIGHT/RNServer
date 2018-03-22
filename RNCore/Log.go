@@ -1,3 +1,6 @@
+//todo...
+//保存的文件 最多只有20份 每周清空多出来的旧文件
+
 package RNCore
 
 import (
@@ -5,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"time"
 )
 
@@ -30,12 +32,11 @@ func Debug(node IName, format string, a ...interface{}) {
 }
 
 type IName interface {
-	Name() string
+	Type_Name() string
 }
 
 func doPrintf(node IName, printLevel string, format string, a ...interface{}) *logData {
-
-	return &logData{time.Now(), Root().Name(), reflect.TypeOf(node).String() + "." + node.Name(), printLevel, fmt.Sprintf(format, a...)}
+	return &logData{time.Now(), Root().Name(), node.Type_Name(), printLevel, fmt.Sprintf(format, a...)}
 }
 
 /*func getNodeName(node interface{}) string {

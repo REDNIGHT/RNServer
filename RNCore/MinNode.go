@@ -1,6 +1,7 @@
 package RNCore
 
 import (
+	"fmt"
 	"reflect"
 )
 
@@ -14,6 +15,7 @@ func NewMinNode(name string) MinNode {
 }
 
 func (this *MinNode) Name() string { return this.name }
+
 func (this *MinNode) Type_Name() string {
 	return reflect.TypeOf(this).String() + "." + this.Name()
 }
@@ -48,4 +50,7 @@ func (this *MinNode) Error(format string, a ...interface{}) {
 }
 func (this *MinNode) Debug(format string, a ...interface{}) {
 	Debug(this, printDebugLevel, format, a)
+}
+func (this *MinNode) Panic(format string, a ...interface{}) {
+	panic(this.Type_Name() + fmt.Sprintf(format, a...))
 }

@@ -1,3 +1,6 @@
+//todo...
+//保存的文件 每种最多只有20份 每周清空多出来的旧文件
+
 package RNCore
 
 import (
@@ -204,6 +207,9 @@ func (this *State) Run() {
 			continue
 
 		case nodeInfo := <-this.InNodeInfo:
+			if _, b := this.nodeInfoMap[nodeInfo.Name]; b == true {
+				this.Error("b := this.nodeInfoMap[nodeInfo.Name]; b == true  nodeInfo.Name=%v", nodeInfo.Name)
+			}
 			this.nodeInfoMap[nodeInfo.Name] = nodeInfo
 			continue
 

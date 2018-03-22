@@ -5,13 +5,13 @@ import (
 )
 
 type Broadcast struct {
-	In chan interface{}
+	In func() interface{}
 
 	outs []func(interface{})
 }
 
 func NewBroadcast() *Broadcast {
-	return &Broadcast{make(chan interface{}, 0), make([]func(interface{}), InChanMinCount)}
+	return &Broadcast{nil, make([]func(interface{}), InChanMinCount)}
 }
 
 func (this *Broadcast) OutAdd(outs ...func(interface{})) {
@@ -21,11 +21,9 @@ func (this *Broadcast) OutAdd(outs ...func(interface{})) {
 func (this *Broadcast) Go() {
 	go func() {
 		for {
-			select {
-			case in := <-this.In:
-				for i := 0; i < len(this.outs); i++ {
-					this.outs[i](in)
-				}
+			v := this.In()
+			for i := 0; i < len(this.outs); i++ {
+				this.outs[i](v)
 			}
 		}
 	}()
