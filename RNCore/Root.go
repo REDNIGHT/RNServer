@@ -24,8 +24,8 @@ func Root() *root {
 	return _root
 }
 
-func (this *root) AddNode(node IMinNode) {
-	if this.GetNode(node.Name()) != nil {
+func (this *root) Add(node IMinNode) {
+	if this.Get(node.Name()) != nil {
 		panic("Get(node.Name()) != nil  node.Name()=" + node.Name())
 	}
 
@@ -36,7 +36,7 @@ func (this *root) AddNode(node IMinNode) {
 	}
 }
 
-func (this *root) GetNode(name string) IMinNode {
+func (this *root) Get(name string) IMinNode {
 	for i := 0; i < len(this.minNodes); i++ {
 		if this.minNodes[i].Name() == name {
 			return this.minNodes[i]
