@@ -49,8 +49,6 @@ func (this *root) Get(name string) IMinNode {
 }
 
 func (this *root) Init() {
-
-	//
 	for i := 0; i < len(this.nodes); i++ {
 
 		n := this.nodes[i]
@@ -107,7 +105,6 @@ func (this *root) Run() {
 }
 
 func (this *root) Close() {
-
 	for i := len(this.nodes) - 1; i >= 0; i-- {
 
 		n := this.nodes[i]
