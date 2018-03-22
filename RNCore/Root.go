@@ -39,6 +39,8 @@ func (this *root) Get(name string) INode {
 }
 
 func (this *root) Init() {
+
+	//
 	for i := 0; i < len(this.nodes); i++ {
 
 		n := this.nodes[i]
@@ -69,7 +71,6 @@ func (this *root) Run() {
 
 	//
 	go func() {
-
 		// close
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, os.Kill)
@@ -93,15 +94,6 @@ func (this *root) Run() {
 			this.CloseSig <- true
 			return
 		}
-	}
-}
-
-func (this *root) State() {
-	this.Node.State()
-
-	for i := 0; i < len(this.nodes); i++ {
-		n := this.nodes[i]
-		n.State()
 	}
 }
 
@@ -143,6 +135,22 @@ func destroy(n INode) {
 }
 
 //
+func (this *root) State() {
+	this.Node.State()
+
+	for i := 0; i < len(this.nodes); i++ {
+		n := this.nodes[i]
+		n.State()
+	}
+}
+
 func (this *root) OnStateInfo(counts ...*uint) *StateInfo {
 	return NewStateInfo(this, 0)
+}
+
+func (this *root) DebugChanState() {
+	for i := 0; i < len(this.nodes); i++ {
+		n := this.nodes[i]
+		n.DebugChanState()
+	}
 }

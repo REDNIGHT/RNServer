@@ -4,20 +4,34 @@ import (
 //"time"
 )
 
-type Cast struct {
-	In chan interface{}
-}
-
-func NewCast() *Cast {
-	return &Cast{In: make(chan interface{})}
-}
-
 //
-func (this *Cast) To(out func(in interface{})) {
+func CastTo(in func() interface{}, out func(in interface{})) {
 	go func() {
 		for {
-			in := <-this.In
-			out(in)
+			out(in())
 		}
 	}()
 }
+
+//
+func CastTo2(inOut func()) {
+	go func() {
+		for {
+			inOut()
+		}
+	}()
+}
+
+//
+type Cast struct {
+	In  func() interface{}
+	Out func(interface{})
+}
+
+func (this *Cast) Go() {
+	go func() {
+		this.Out(this.In())
+	}()
+}
+
+type AllInOne Cast

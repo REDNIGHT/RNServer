@@ -10,13 +10,26 @@ import (
 	"time"
 )
 
-var InState chan *StateInfo = nil
+var inStateInfo chan *StateInfo = nil
+var inNodeInfo chan *NodeInfo = nil
+var inChanOverload chan *ChanOverload = nil
+
+func InStateInfo() chan *StateInfo {
+	return inStateInfo
+}
+func InNodeInfo() chan *NodeInfo {
+	return inNodeInfo
+}
+func InChanOverload() chan *ChanOverload {
+	return inChanOverload
+}
 
 type State struct {
 	Node
 
-	stateTicker time.Duration //= 60
-	saveMaxSpec string
+	//stateTicker time.Duration //= 60
+	stateTickerSpec string
+	saveMaxSpec     string
 	//每隔5秒执行一次："*/5 * * * * ?"
 	//每隔1分钟执行一次："0 */1 * * * ?"
 	//每天23点执行一次："0 0 23 * * ?"
@@ -25,14 +38,23 @@ type State struct {
 	//在26分、29分、33分执行一次："0 26,29,33 * * * ?"
 	//每天的0点、13点、18点、21点都执行一次："0 0 0,13,18,21 * * ?"
 
+	//
 	In      chan *StateInfo
-	InProxy chan *StateInfo
+	InProxy chan []byte
 
 	stateInfos      []*StateInfo
 	stateInfosProxy []*StateInfo
 	stateInfoMap    map[string]*StateInfo
 
+	//
 	maxStateInfos []MaxStateInfo
+
+	//
+	InNodeInfo  chan *NodeInfo
+	nodeInfoMap map[string]*NodeInfo
+
+	//
+	InChanOverload chan *ChanOverload
 }
 
 type MaxStateInfo struct {
@@ -40,63 +62,99 @@ type MaxStateInfo struct {
 	Time  time.Time
 }
 
+type ChanOverload struct {
+	Name    string
+	ChanLen int
+}
+
 type IState interface {
 	Name() string
 	OnStateInfo(counts ...*uint) *StateInfo
-	GetOutNodeInfos() []string
 }
 
 type StateInfo struct {
-	RootName     string
-	NodeName     string
-	OutNodeInfos []string
+	RootName string
+	NodeName string
 
 	InCount uint
 
 	Values    map[string]uint
 	StrValues map[string]string
+	//DebugValues map[string]string
 }
 
 func (this *StateInfo) key() string {
 	return this.RootName + "." + this.NodeName
 }
 
-func NewStateInfo(node INode, inCount uint) *StateInfo {
-	return &StateInfo{Root().Name(), node.Name(), node.GetOutNodeInfos(), inCount, nil, nil}
+type NodeInfo struct {
+	Name     string
+	OutNames []string
 }
 
-func NewState(name string, stateTicker time.Duration, saveMaxSpec string) *State {
+func NewStateInfo(node INode, inCount uint) *StateInfo {
+	return &StateInfo{Root().Name(), node.Name(), inCount, nil, nil}
+}
+
+func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
 	state := &State{NewNode(name),
-		stateTicker,
+		stateTickerSpec,
 		saveMaxSpec,
 		make(chan *StateInfo, InChanCount),
-		make(chan *StateInfo, InChanCount),
+		make(chan []byte, InChanCount),
+
 		make([]*StateInfo, 0),
 		make([]*StateInfo, 0),
 		make(map[string]*StateInfo),
-		nil}
+		nil,
 
-	if InState != nil {
-		panic("InState != nil")
+		make(chan *NodeInfo, InChanCount),
+		make(map[string]*NodeInfo),
+
+		make(chan *ChanOverload, InChanCount)}
+
+	if inStateInfo != nil {
+		panic("inStateInfo != nil")
 	}
-	InState = state.In
+	inStateInfo = state.In
+
+	if inNodeInfo != nil {
+		panic("inNodeInfo != nil")
+	}
+	inNodeInfo = state.InNodeInfo
+
+	if inChanOverload != nil {
+		panic("inChanOverload != nil")
+	}
+	inChanOverload = state.InChanOverload
+
 	return state
 }
 
-/*func (this *State) SetOut(outs []*chan<- interface{}) {
-	this.outs = outs
-}*/
-
 func (this *State) Run() {
+
+	c := cron.New()
+	c.Start()
+
+	//
+	stateTicker := make(chan bool)
+	if len(this.stateTickerSpec) <= 0 {
+		this.stateTickerSpec = "0 */1 * * * ?" //每分钟执行一次
+	}
+	c.AddFunc(this.stateTickerSpec, func() { stateTicker <- true })
 
 	//
 	saveMax := make(chan bool)
-	c := cron.New()
 	if len(this.saveMaxSpec) <= 0 {
 		this.saveMaxSpec = "0 0 6 * * ?" //每天6点执行一次
 	}
 	c.AddFunc(this.saveMaxSpec, func() { saveMax <- true })
-	c.Start()
+
+	//
+	debugChanStateTicker := make(chan bool)
+	if RNCDebug {
+		c.AddFunc(RNCDebugStateTickerSpec, func() { debugChanStateTicker <- true }) //每10s执行一次
+	}
 
 	//
 	save := make(chan bool)
@@ -108,7 +166,7 @@ func (this *State) Run() {
 
 		//
 		select {
-		case <-time.After(time.Second * this.stateTicker):
+		case <-stateTicker:
 			this.stateInfos = make([]*StateInfo, 0)
 
 			//
@@ -133,6 +191,10 @@ func (this *State) Run() {
 			this.saveMax()
 			continue
 
+		case <-debugChanStateTicker:
+			Root().DebugChanState()
+			continue
+
 		//
 		case stateInfo := <-this.In:
 
@@ -141,10 +203,17 @@ func (this *State) Run() {
 
 			continue
 
-		case stateInfo := <-this.InProxy:
+		case nodeInfo := <-this.InNodeInfo:
+			this.nodeInfoMap[nodeInfo.Name] = nodeInfo
+			continue
 
-			this.stateInfosProxy = append(this.stateInfosProxy, stateInfo)
+		case chanOverload := <-this.InChanOverload:
+			this.saveChanOverload(chanOverload)
+			continue
 
+			//
+		case buffer := <-this.InProxy:
+			this.OnInProxy(buffer)
 			continue
 
 			//
@@ -160,6 +229,39 @@ func (this *State) Run() {
 	}
 }
 
+func (this *State) OnInProxy(buffer []byte) {
+	j := &proxyDataJ{}
+	json.Unmarshal(buffer, j)
+
+	if j.StateInfo != nil && j.NodeInfo != nil {
+		this.Error("j.StateInfo != nil && j.NodeInfo != nil")
+		return
+	}
+
+	if j.StateInfo != nil {
+		this.stateInfosProxy = append(this.stateInfosProxy, j.StateInfo)
+		return
+	}
+	if j.NodeInfo != nil {
+		this.nodeInfoMap[j.NodeInfo.Name] = j.NodeInfo
+	}
+	if j.ChanOverload != nil {
+		this.saveChanOverload(j.ChanOverload)
+	}
+}
+
+//
+func chanOverloadFileName() string {
+	Time := time.Now()
+	return fmt.Sprintf("%v\\%v-%v.%v.%v.chanOverload.csv", baseStatesPath(), Root().Name(), Time.Year(), Time.Month(), Time.Day())
+}
+func (this *State) saveChanOverload(chanOverload *ChanOverload) {
+
+	row := fmt.Sprintf("%v	%v	%v\n", time.Now(), chanOverload.Name, chanOverload.ChanLen)
+
+	ioutil.WriteFile(chanOverloadFileName(), []byte(row), os.ModeAppend)
+}
+
 //
 func (this *State) save() {
 	count := this.csvRowCount()
@@ -167,7 +269,7 @@ func (this *State) save() {
 	//
 	//----------------------------------------------------------------------
 	//csv文件名
-	csvFile := csvFileName()
+	csvFile := stateFileName()
 	if b, _ := Exists(csvFile); b == false {
 		//新csv文件第一排数据
 		firstRow := this.getFirstRow(count)
@@ -191,7 +293,7 @@ func (this *State) save() {
 func (this *State) saveMax() {
 
 	//csv文件名
-	csvMaxFile := csvMaxFileName()
+	csvMaxFile := maxFileName()
 	if b, _ := Exists(csvMaxFile); b == false {
 		//新csv文件第一排数据
 		firstRow := this.getFirstRow(len(this.maxStateInfos))
@@ -224,13 +326,13 @@ func baseStatesPath() string {
 	return AutoNewPath(ExecPath() + "\\states")
 }
 
-func csvFileName() string {
+func stateFileName() string {
 	Time := time.Now()
 	return fmt.Sprintf("%v\\%v-%v.%v.%v.state.csv", baseStatesPath(), Root().Name(), Time.Year(), Time.Month(), Time.Day())
 }
-func csvMaxFileName() string {
+func maxFileName() string {
 	Time := time.Now()
-	return fmt.Sprintf("%v\\max_%v.%v.state.csv", baseStatesPath(), Root().Name(), Time.Year())
+	return fmt.Sprintf("%v\\%v.%v.max_state.csv", baseStatesPath(), Root().Name(), Time.Year())
 }
 func (this *State) csvRowCount() int {
 	count := 0
@@ -339,6 +441,13 @@ func (this *State) OnStateInfo(counts ...*uint) *StateInfo {
 	return NewStateInfo(this, *counts[0])
 }
 
+func (this *State) DebugChanState() {
+	this.OnDebugChanState("In", len(this.In))
+	this.OnDebugChanState("InProxy", len(this.InProxy))
+	this.OnDebugChanState("InNodeInfo", len(this.InNodeInfo))
+	this.OnDebugChanState("InChanOverload", len(this.InChanOverload))
+}
+
 //----------------------------------------------------------------------------------------------------------------
 
 type StateProxy struct {
@@ -356,28 +465,50 @@ type StateProxy struct {
 
 	In chan *StateInfo
 
-	out chan<- []byte
+	InNodeInfo chan *NodeInfo
+
+	InChanOverload chan *ChanOverload
+
+	Out func([]byte)
+}
+
+type proxyDataJ struct {
+	StateInfo    *StateInfo
+	NodeInfo     *NodeInfo
+	ChanOverload *ChanOverload
 }
 
 func NewStateProxy(name string, stateTicker time.Duration, saveMaxSpec string) *StateProxy {
-	state := &StateProxy{NewNode(name), stateTicker, saveMaxSpec, make(chan *StateInfo, InChanCount), nil}
+	state := &StateProxy{NewNode(name), stateTicker, saveMaxSpec, make(chan *StateInfo, InChanCount), make(chan *NodeInfo, InChanCount), make(chan *ChanOverload, InChanCount), nil}
 
-	if InState != nil {
-		panic("InState != nil")
+	if inStateInfo != nil {
+		panic("inStateInfo != nil")
 	}
+	inStateInfo = state.In
 
-	InState = state.In
+	if inNodeInfo != nil {
+		panic("inNodeInfo != nil")
+	}
+	inNodeInfo = state.InNodeInfo
+
+	if inChanOverload != nil {
+		panic("inChanOverload != nil")
+	}
+	inChanOverload = state.InChanOverload
 	return state
 }
 
-func (this *StateProxy) SetOut(out chan<- []byte, node_chan_name string) {
-	this.out = out
+func (this *StateProxy) Run() {
 
 	//
-	this.SetOutNodeInfos("out", node_chan_name)
-}
+	c := cron.New()
+	c.Start()
 
-func (this *StateProxy) Run() {
+	debugChanStateTicker := make(chan bool)
+	if RNCDebug {
+		c.AddFunc(RNCDebugStateTickerSpec, func() { debugChanStateTicker <- true })
+	}
+
 	//
 	var inCount uint = 0
 	for {
@@ -393,8 +524,38 @@ func (this *StateProxy) Run() {
 			//
 		case stateInfo := <-this.In:
 
-			buffer, _ := json.Marshal(stateInfo)
-			this.out <- buffer
+			buffer, err := json.Marshal(&proxyDataJ{stateInfo, nil, nil})
+			if err == nil {
+				this.Out(buffer)
+			} else {
+				this.Error("json.Marshal(stateInfo)  err=%v", err)
+			}
+			continue
+
+			//
+		case nodeInfo := <-this.InNodeInfo:
+
+			buffer, err := json.Marshal(&proxyDataJ{nil, nodeInfo, nil})
+			if err == nil {
+				this.Out(buffer)
+			} else {
+				this.Error("json.Marshal(nodeInfo)  err=%v", err)
+			}
+			continue
+
+			//
+		case chanOverload := <-this.InChanOverload:
+
+			buffer, err := json.Marshal(&proxyDataJ{nil, nil, chanOverload})
+			if err == nil {
+				this.Out(buffer)
+			} else {
+				this.Error("json.Marshal(nodeInfo)  err=%v", err)
+			}
+			continue
+
+		case <-debugChanStateTicker:
+			Root().DebugChanState()
 			continue
 
 		case <-this.StateSig:
@@ -407,4 +568,10 @@ func (this *StateProxy) Run() {
 			return
 		}
 	}
+}
+
+func (this *StateProxy) DebugChanState() {
+	this.OnDebugChanState("In", len(this.In))
+	this.OnDebugChanState("InNodeInfo", len(this.InNodeInfo))
+	this.OnDebugChanState("InChanOverload", len(this.InChanOverload))
 }

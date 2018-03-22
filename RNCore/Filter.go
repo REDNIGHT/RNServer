@@ -4,55 +4,36 @@ import (
 //"time"
 )
 
-type IFilterName interface {
-	FilterName() string
-}
-
 type Filter struct {
-	Node
+	In func() (string, interface{})
 
-	filters []_FilterInfo
+	outFilters []_FilterInfo
 
-	In chan IFilterName
-
-	out chan<- interface{}
+	Out func(interface{})
 }
 
 type _FilterInfo struct {
 	filterName string
 	pickUp     bool
-	out        chan<- interface{}
+	out        func(interface{})
 }
 
-func NewFilter(name string) *Filter {
-	return &Filter{Node: NewNode(name), filters: make([]_FilterInfo, 0), In: make(chan IFilterName, InChanCount)}
+func NewFilter() *Filter {
+	return &Filter{nil, make([]_FilterInfo, 0), nil}
 }
 
-func (this *Filter) SetOut(out chan<- interface{}, node_chan_name string) {
-	this.out = out
-
-	//
-	this.SetOutNodeInfos("out", node_chan_name)
+func (this *Filter) OutAddFilter(filterName string, pickUp bool, out func(interface{})) {
+	this.outFilters = append(this.outFilters, _FilterInfo{filterName, pickUp, out})
 }
 
-func (this *Filter) AddFilter(filterName string, pickUp bool, out chan<- interface{}) {
-	this.filters = append(this.filters, _FilterInfo{filterName, pickUp, out})
-}
-
-func (this *Filter) Run() {
-
-	var inCount uint = 0
-	for {
-		inCount++
-
-		//
-		select {
-
-		case iFilter := <-this.In:
+func (this *Filter) Go() {
+	go func() {
+		for {
+			name, v := this.In()
 			pickUp := false
-			for _, f := range this.filters {
-				if iFilter.FilterName() == f.filterName {
-					f.out <- iFilter
+			for _, f := range this.outFilters {
+				if name == f.filterName {
+					f.out(v)
 
 					if f.pickUp == true {
 						pickUp = f.pickUp
@@ -61,22 +42,9 @@ func (this *Filter) Run() {
 			}
 
 			if pickUp == false {
-				this.out <- iFilter
+				this.Out(v)
 			}
 
-		case <-this.StateSig:
-			this.OnState(&inCount)
-			this.StateSig <- true
-			continue
-
-		case <-this.CloseSig:
-			this.CloseSig <- true
-			return
 		}
-	}
-}
-
-//
-func (this *Filter) OnStateInfo(counts ...*uint) *StateInfo {
-	return NewStateInfo(this, *counts[0])
+	}()
 }

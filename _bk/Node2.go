@@ -1,5 +1,6 @@
 package RNCore
 
+/*
 import (
 	"reflect"
 	//"time"
@@ -59,21 +60,10 @@ func (this *Node2) _OnState(v interface{}) {
 	this.StateSig <- true
 }
 
-//
-/*func (this *_Node2StateInfo) GetInNames() []string {
-	return this.InNames
-}
-func (this *_Node2StateInfo) GetInLens() []uint {
-	return this.InCounts
-}*/
 
 func (this *Node2) OnStateInfo(counts ...*uint) *StateInfo {
-	/*l := len(this.selectCases) - 2 + 1 //-2是去掉CloseSig,State +1是InCount
-	inNames := make([]string, l)
-	for i := 0; i < l; i++ {
-		inNames[i] = reflect.TypeOf(this.funcs[i]).Name()
-	}
-	inNames[len(inNames)-1] = "InCount"*/
+
 
 	return NewStateInfo(this, this.inCount)
 }
+*/

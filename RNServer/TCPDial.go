@@ -7,12 +7,12 @@ import (
 import "RNCore"
 
 type TCPDial struct {
-	RNCore.Node
+	RNCore.MinNode
 
 	ip   string
 	conn net.Conn
 
-	outAddConn chan<- *Name_Conn
+	Out func(*Name_Conn)
 }
 
 type Name_Conn struct {
@@ -21,66 +21,40 @@ type Name_Conn struct {
 }
 
 func NewTCPDial(name string, ip string) *TCPDial {
-	return &TCPDial{Node: RNCore.NewNode(name), ip: ip}
+	return &TCPDial{RNCore.NewMinNode(name), ip, nil, nil}
 }
 
-func (this *TCPDial) SetOut(outAddConn chan<- *Name_Conn, node_chan_name string) {
-	this.outAddConn = outAddConn
+func (this *TCPDial) Go() {
+	go func() {
+		for {
+			//
+			if this.conn == nil {
+				conn, err := net.Dial("tcp", this.ip)
 
-	//
-	this.SetOutNodeInfos("outAddConn", node_chan_name)
-}
+				if err != nil {
+					this.Error("err != nil  err=" + err.Error())
+					this.conn = nil
+				} else {
+					this.conn = conn
+					this.Log("A new Connection  RemoteAddr=" + conn.RemoteAddr().String())
+					this.Out(&Name_Conn{this.Name(), conn})
+				}
+			}
 
-func (this *TCPDial) Run() {
-
-	//
-	var inCount uint = 0
-	for {
-		inCount++
-
-		//
-		if this.conn == nil {
-			conn, err := net.Dial("tcp", this.ip)
-
-			if err != nil {
-				this.Error("err != nil  err=" + err.Error())
-				this.conn = nil
+			//todo...
+			//链接异常断开时 从新链接
+			var delta <-chan time.Time
+			if this.conn == nil {
+				delta = time.After(time.Second * 2)
 			} else {
-				this.conn = conn
-				this.Log("A new Connection  RemoteAddr=" + conn.RemoteAddr().String())
-				this.outAddConn <- &Name_Conn{this.Name(), conn}
+				delta = time.After(time.Second * 30)
+			}
+
+			//
+			select {
+			case <-delta:
+				continue
 			}
 		}
-
-		//todo...
-		//链接异常断开时 从新链接
-		var delta <-chan time.Time
-		if this.conn == nil {
-			delta = time.After(time.Second * 2)
-		} else {
-			delta = time.After(time.Second * 30)
-		}
-
-		//
-		select {
-		case <-delta:
-			continue
-
-		case <-this.StateSig:
-			this.OnState(&inCount)
-			this.StateSig <- true
-			continue
-
-		case <-this.CloseSig:
-			this.CloseSig <- true
-			return
-		}
-	}
-}
-
-//
-func (this *TCPDial) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
-	si := RNCore.NewStateInfo(this, *counts[0])
-	si.StrValues = map[string]string{"ip": this.ip}
-	return si
+	}()
 }

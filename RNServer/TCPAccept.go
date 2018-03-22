@@ -11,18 +11,18 @@ type TCPAccept struct {
 	ip       string
 	listener net.Listener
 
-	outAddConn chan<- net.Conn
+	out func(net.Conn)
 }
 
 func NewTCPAccept(name string, ip string) *TCPAccept {
 	return &TCPAccept{Node: RNCore.NewNode(name), ip: ip}
 }
 
-func (this *TCPAccept) SetOut(outAddConn chan<- net.Conn, node_chan_name string) {
-	this.outAddConn = outAddConn
+func (this *TCPAccept) Out(out func(net.Conn), node_chan_name string) {
+	this.out = out
 
 	//
-	this.SetOutNodeInfos("outAddConn", node_chan_name)
+	this.SetOutNodeInfos("out", node_chan_name)
 
 }
 
@@ -49,7 +49,7 @@ func (this *TCPAccept) Run() {
 		this.Log("A new Connection  RemoteAddr=" + conn.RemoteAddr().String())
 
 		//
-		this.outAddConn <- conn
+		this.out(conn)
 
 		//
 		select {
@@ -83,4 +83,8 @@ func (this *TCPAccept) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
 	si := RNCore.NewStateInfo(this, *counts[0])
 	si.StrValues = map[string]string{"ip": this.ip}
 	return si
+}
+
+func (this *TCPAccept) DebugChanState() {
+	//this.OnDebugChanState("In", len(this.In))
 }

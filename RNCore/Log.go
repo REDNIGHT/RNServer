@@ -16,25 +16,29 @@ const (
 	printDebugLevel = "debug"
 )
 
-func Print(node interface{}, format string, a ...interface{}) {
-	InLog <- doPrintf(node, printLogLevel, format, a)
+func Print(node IName, format string, a ...interface{}) {
+	inLog <- doPrintf(node, printLogLevel, format, a)
 }
-func Warn(node interface{}, format string, a ...interface{}) {
-	InLog <- doPrintf(node, printWarnLevel, format, a)
+func Warn(node IName, format string, a ...interface{}) {
+	inLog <- doPrintf(node, printWarnLevel, format, a)
 }
-func Error(node interface{}, format string, a ...interface{}) {
-	InLog <- doPrintf(node, printErrorLevel, format, a)
+func Error(node IName, format string, a ...interface{}) {
+	inLog <- doPrintf(node, printErrorLevel, format, a)
 }
-func Debug(node interface{}, format string, a ...interface{}) {
-	InLog <- doPrintf(node, printDebugLevel, format, a)
-}
-
-func doPrintf(node interface{}, printLevel string, format string, a ...interface{}) *LogData {
-
-	return &LogData{time.Now(), Root().Name(), reflect.TypeOf(node).String() + "." + getNodeName(node), printLevel, fmt.Sprintf(format, a...)}
+func Debug(node IName, format string, a ...interface{}) {
+	inLog <- doPrintf(node, printDebugLevel, format, a)
 }
 
-func getNodeName(node interface{}) string {
+type IName interface {
+	Name() string
+}
+
+func doPrintf(node IName, printLevel string, format string, a ...interface{}) *logData {
+
+	return &logData{time.Now(), Root().Name(), reflect.TypeOf(node).String() + "." + node.Name(), printLevel, fmt.Sprintf(format, a...)}
+}
+
+/*func getNodeName(node interface{}) string {
 	v_nil := reflect.Value{}
 
 	nv := reflect.ValueOf(node).Elem()
@@ -49,18 +53,23 @@ func getNodeName(node interface{}) string {
 
 	//
 	return fun.Call(nil)[0].String()
-}
+}*/
 
 //--------------------------------------------------------------------------------------------------------
 type Log struct {
 	Node
 
-	In chan *LogData
+	In      chan *logData
+	InProxy chan []byte
 }
 
-var InLog chan *LogData = nil
+var inLog chan *logData = nil
 
-type LogData struct {
+func InLog() chan *logData {
+	return inLog
+}
+
+type logData struct {
 	Time     time.Time
 	RootName string
 	NodeName string
@@ -69,9 +78,9 @@ type LogData struct {
 }
 
 func NewLog(name string) *Log {
-	log := &Log{NewNode(name), make(chan *LogData, InChanCount)}
-	if InLog == nil {
-		InLog = log.In
+	log := &Log{NewNode(name), make(chan *logData, InChanCount), make(chan []byte, InChanCount)}
+	if inLog == nil {
+		inLog = log.In
 	}
 	return log
 }
@@ -85,8 +94,13 @@ func (this *Log) Run() {
 		//
 		select {
 		case logData := <-this.In:
-
 			fmt.Println("%v>%v>%v", logData.NodeName, logData.Level, logData.Log)
+			this.save(logData)
+			continue
+
+		case buffer := <-this.InProxy:
+			logData := &logData{}
+			json.Unmarshal(buffer, logData)
 			this.save(logData)
 			continue
 
@@ -106,7 +120,7 @@ func baseLogPath() string {
 	return AutoNewPath(ExecPath() + "\\log")
 }
 
-func (this *Log) save(logData *LogData) {
+func (this *Log) save(logData *logData) {
 	csvFileName := fmt.Sprintf("%v\\%v.%v.%v.log.csv", baseLogPath(), logData.Time.Year(), logData.Time.Month(), logData.Time.Day())
 
 	buffer := fmt.Sprintf("%v	%v	%v	%v	%v\n", logData.Time, logData.RootName, logData.NodeName, logData.Level, logData.Log)
@@ -118,25 +132,22 @@ func (this *Log) OnStateInfo(counts ...*uint) *StateInfo {
 	return NewStateInfo(this, *counts[0])
 }
 
+func (this *Log) DebugChanState() {
+	this.OnDebugChanState("In", len(this.In))
+}
+
 //----------------------------------------------------------------------------------------------------
 type LogProxy struct {
 	Node
 
-	In  chan *LogData
-	out chan<- []byte
+	In  chan *logData
+	Out func([]byte)
 }
 
 func NewLogProxy(name string) *LogProxy {
-	logProxy := &LogProxy{NewNode(name), make(chan *LogData, InChanCount), nil}
-	InLog = logProxy.In
+	logProxy := &LogProxy{NewNode(name), make(chan *logData, InChanCount), nil}
+	inLog = logProxy.In
 	return logProxy
-}
-
-func (this *LogProxy) SetOut(out chan<- []byte, node_chan_name string) {
-	this.out = out
-
-	//
-	this.SetOutNodeInfos("out", node_chan_name)
 }
 
 func (this *LogProxy) Run() {
@@ -151,8 +162,12 @@ func (this *LogProxy) Run() {
 
 			fmt.Println("%v>%v>%v", logData.NodeName, logData.Level, logData.Log)
 
-			buffer, _ := json.Marshal(logData)
-			this.out <- buffer
+			buffer, err := json.Marshal(logData)
+			if err == nil {
+				this.Out(buffer)
+			} else {
+				this.Error("json.Marshal(logData)  err=%v", err)
+			}
 			continue
 
 		case <-this.StateSig:
@@ -165,4 +180,8 @@ func (this *LogProxy) Run() {
 			return
 		}
 	}
+}
+
+func (this *LogProxy) DebugChanState() {
+	this.OnDebugChanState("In", len(this.In))
 }

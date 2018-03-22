@@ -4,52 +4,25 @@ import (
 //"time"
 )
 
+//分流
 type Diversion struct {
-	Node
+	In func() interface{}
 
-	In chan interface{}
-
-	outs []chan<- interface{}
+	outs []func(interface{})
 }
 
-func NewDiversion(name string) *Diversion {
-	return &Diversion{Node: NewNode(name), In: make(chan interface{}, InChanCount)}
+func NewDiversion() *Diversion {
+	return &Diversion{nil, make([]func(interface{}), 0)}
 }
 
-func (this *Diversion) SetOut(outs []chan<- interface{}, outNodeInfos ...string) {
-	this.outs = outs
-
-	//
-	this.SetOutNodeInfos("out", outNodeInfos...)
+func (this *Diversion) OutAdd(outs ...func(interface{})) {
+	this.outs = append(this.outs, outs...)
 }
 
-func (this *Diversion) Run() {
-
+func (this *Diversion) Go() {
 	for i := 0; i < len(this.outs); i++ {
 		go func() {
-			this.outs[i] <- this.In
+			this.outs[i](this.In())
 		}()
 	}
-
-	//
-	var inCount uint = 0
-	for {
-		inCount++
-		//
-		select {
-		case <-this.StateSig:
-			this.OnState(&inCount)
-			this.StateSig <- true
-			continue
-
-		case <-this.CloseSig:
-			this.CloseSig <- true
-			return
-		}
-	}
-}
-
-//
-func (this *Diversion) OnStateInfo(counts ...*uint) *StateInfo {
-	return NewStateInfo(this, *counts[0])
 }

@@ -5,9 +5,10 @@ import (
 	"io"
 	"net"
 	//"time"
+	"RNCore"
+	"math"
 	"unsafe"
 )
-import "RNCore"
 
 type TCPSockets struct {
 	RNCore.Node
@@ -27,16 +28,16 @@ type TCPSockets struct {
 	InBroadcast        chan []byte
 
 	//
-	outAddSocket    chan<- *Socket
-	outRemoveSocket chan<- *Socket
+	outAddSocket    func(*Socket)
+	outRemoveSocket func(*Socket)
 
-	outSocketsBuffer chan<- *SocketBuffer
+	outSocketsBuffer func(*SocketBuffer)
 }
 
 type Socket struct {
 	Name      string
 	Conn      net.Conn
-	OutBuffer chan<- *SocketBuffer
+	OutBuffer func(*SocketBuffer)
 	InBuffer  chan []byte
 }
 
@@ -67,23 +68,15 @@ func NewTCPSockets(name string, maxSocketCount int) *TCPSockets {
 		InBroadcast:        make(chan []byte, RNCore.InChanCount)}
 }
 
-func (this *TCPSockets) SetOut(
-	outAddSocket chan<- *Socket,
-	outRemoveSocket chan<- *Socket,
-	outSocketsBuffer chan *SocketBuffer,
-	outNodeInfos ...string) {
+func (this *TCPSockets) Out(
+	outAddSocket func(*Socket),
+	outRemoveSocket func(*Socket),
+	outSocketsBuffer func(*SocketBuffer)) {
 
 	this.outAddSocket = outAddSocket
 	this.outRemoveSocket = outRemoveSocket
 
 	this.outSocketsBuffer = outSocketsBuffer
-
-	//
-	this.OutNodeInfos = outNodeInfos
-
-	this.OutNodeInfos[0] = "outAddSocket." + this.OutNodeInfos[0]
-	this.OutNodeInfos[1] = "outRemoveSocket." + this.OutNodeInfos[1]
-	this.OutNodeInfos[2] = "outSocketsBuffer." + this.OutNodeInfos[2]
 }
 
 func (this *TCPSockets) Run() {
@@ -158,7 +151,7 @@ func (this *TCPSockets) addSocket(conn net.Conn, name string) {
 	}
 
 	if this.outAddSocket != nil {
-		this.outAddSocket <- socket
+		this.outAddSocket(socket)
 	}
 
 	go this.readConnection(socket)
@@ -187,7 +180,7 @@ func (this *TCPSockets) removeSocket(socketId uintptr) {
 		this.Log("Now, %d connections is alve.\n", len(this.sockets))
 
 		if this.outRemoveSocket != nil {
-			this.outRemoveSocket <- socket
+			this.outRemoveSocket(socket)
 		}
 
 	} else {
@@ -197,13 +190,13 @@ func (this *TCPSockets) removeSocket(socketId uintptr) {
 
 func (this *TCPSockets) readConnection(socket *Socket) {
 	for {
-		buffer, err := read(socket.Conn)
+		buffer, err := this.read(socket.Conn)
 		if err != nil {
 			this.Error("err != nil  err=" + err.Error())
 			break
 		}
 
-		socket.OutBuffer <- &SocketBuffer{uintptr(unsafe.Pointer(socket)), buffer}
+		socket.OutBuffer(&SocketBuffer{uintptr(unsafe.Pointer(socket)), buffer})
 	}
 
 	this.InRemoveSocket <- uintptr(unsafe.Pointer(socket))
@@ -215,7 +208,7 @@ func (this *TCPSockets) writeConnection(socket *Socket) {
 			break
 		}
 
-		err := write(socket.Conn, b)
+		err := this.write(socket.Conn, b)
 		if err != nil {
 			break
 		}
@@ -225,7 +218,7 @@ func (this *TCPSockets) writeConnection(socket *Socket) {
 }
 
 //
-func read(conn net.Conn) (buffer []byte, err error) {
+func (this *TCPSockets) read(conn net.Conn) (buffer []byte, err error) {
 
 	buffer = make([]byte, 2)
 	if _, err := io.ReadFull(conn, buffer); err != nil {
@@ -242,9 +235,13 @@ func read(conn net.Conn) (buffer []byte, err error) {
 	return buffer, nil
 }
 
-func write(conn net.Conn, buffer []byte) error {
-
-	_buffer := make([]byte, len(buffer)+2)
+func (this *TCPSockets) write(conn net.Conn, buffer []byte) error {
+	buferLen := len(buffer) + 2
+	if buferLen >= math.MaxUint16 {
+		this.Error("buferLen >= math.MaxUint16  buferLen=%v", buferLen)
+		return nil
+	}
+	_buffer := make([]byte, buferLen)
 
 	binary.BigEndian.PutUint16(_buffer, uint16(len(buffer)))
 	copy(_buffer[2:], buffer)
@@ -262,18 +259,6 @@ type _TCPSocketsStateInfo struct {
 	socketsByNameCount uint
 
 	InCount uint
-
-	/*sockets       int
-	socketsByName int
-
-	InAddConn            int
-	InAddConnWithName    int
-	InRemoveSocketByName int
-	InRemoveSocket       int
-
-	InSendBuffer       int
-	InSendBufferByName int
-	InBroadcast        int*/
 }
 
 func (this *TCPSockets) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
@@ -284,4 +269,15 @@ func (this *TCPSockets) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
 		"socketCount":        uint(len(this.sockets)),
 		"socketsByNameCount": uint(len(this.socketsByName))}
 	return si
+}
+
+func (this *TCPSockets) DebugChanState() {
+	this.OnDebugChanState("InAddConn", len(this.InAddConn))
+	this.OnDebugChanState("InAddConnWithName", len(this.InAddConnWithName))
+	this.OnDebugChanState("InRemoveSocketByName", len(this.InRemoveSocketByName))
+	this.OnDebugChanState("InRemoveSocket", len(this.InRemoveSocket))
+
+	this.OnDebugChanState("InSendBuffer", len(this.InSendBuffer))
+	this.OnDebugChanState("InSendBufferByName", len(this.InSendBufferByName))
+	this.OnDebugChanState("InBroadcast", len(this.InBroadcast))
 }

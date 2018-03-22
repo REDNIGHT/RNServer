@@ -7,11 +7,11 @@ import (
 )
 
 type Router2Socket struct {
-	RNCore.Node
+	RNCore.MinNode
 
-	InRouter chan *Router
+	In chan *Router
 
-	outSendBufferByName chan<- *SocketBufferByName
+	Out func(*SocketBufferByName)
 }
 
 type RouterData struct {
@@ -20,48 +20,23 @@ type RouterData struct {
 }
 
 func NewRouter2Socket(name string) *Router2Socket {
-	return &Router2Socket{Node: RNCore.NewNode(name), InRouter: make(chan *Router, RNCore.InChanCount)}
+	return &Router2Socket{RNCore.NewMinNode(name), make(chan *Router, RNCore.InChanMinCount), nil}
 }
 
-func (this *Router2Socket) SetOut(outSendBufferByName chan<- *SocketBufferByName, node_chan_name string) {
-	this.outSendBufferByName = outSendBufferByName
+func (this *Router2Socket) Go() {
+	go func() {
+		for {
 
-	//
-	this.SetOutNodeInfos("outSendBufferByName", node_chan_name)
-}
+			select {
+			case router := <-this.In:
+				buffer, err := json.Marshal(&RouterData{router.SocketID, router.JosnData.NJ})
+				if err != nil {
+					this.Error("err != nil  err=" + err.Error())
+					continue
+				}
 
-func (this *Router2Socket) Run() {
-
-	//
-	var inCount uint = 0
-	for {
-		inCount++
-
-		//
-		select {
-		case router := <-this.InRouter:
-			buffer, err := json.Marshal(&RouterData{router.SocketID, router.JosnData.NJ})
-			if err != nil {
-				this.Error("err != nil  err=" + err.Error())
-				continue
+				this.Out(&SocketBufferByName{router.JosnData.S, buffer})
 			}
-
-			this.outSendBufferByName <- &SocketBufferByName{router.JosnData.S, buffer}
-
-			//
-		case <-this.StateSig:
-			this.OnState(&inCount)
-			this.StateSig <- true
-			continue
-
-		case <-this.CloseSig:
-			this.CloseSig <- true
-			return
 		}
-	}
-}
-
-//
-func (this *Router2Socket) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
-	return RNCore.NewStateInfo(this, *counts[0])
+	}()
 }
