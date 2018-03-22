@@ -85,7 +85,7 @@ func (this *root) Run() {
 		sig := <-c
 		this.Log("closing down (signal: %v)", sig)
 
-		this.Node.Close()
+		this.Node.Close() //这行代码可以退出下面的for循环
 	}()
 
 	//
@@ -94,8 +94,7 @@ func (this *root) Run() {
 		select {
 
 		case <-this.StateSig:
-			this.OnState()
-			this.StateSig <- true
+			this.Panic("do not case <-this.StateSig")
 			continue
 
 		case <-this.CloseSig:
@@ -153,7 +152,7 @@ func (this *root) State() {
 }
 
 func (this *root) OnStateInfo(counts ...*uint) *StateInfo {
-	panic("not call this func...")
+	panic("do not call this func...")
 	return nil
 }
 

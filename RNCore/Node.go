@@ -4,13 +4,6 @@ import (
 //"time"
 )
 
-type IMinNode interface {
-	Name() string
-	Run()
-
-	Log(format string, a ...interface{})
-}
-
 type INode interface {
 	Name() string
 	Init()

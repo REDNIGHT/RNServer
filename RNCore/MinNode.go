@@ -5,6 +5,13 @@ import (
 	"reflect"
 )
 
+type IMinNode interface {
+	Name() string
+	Run()
+
+	Log(format string, a ...interface{})
+}
+
 //
 type MinNode struct {
 	name string
