@@ -15,7 +15,7 @@ var _root *root
 
 func NewRoot(serverName string) *root {
 	if _root != nil {
-		panic(_root != nil)
+		panic("_root != nil")
 	}
 	_root = &root{NewNode(serverName), make([]IMinNode, 0), make([]INode, 0)}
 	return _root
@@ -24,15 +24,17 @@ func Root() *root {
 	return _root
 }
 
-func (this *root) Add(node IMinNode) {
-	if this.Get(node.Name()) != nil {
-		panic("Get(node.Name()) != nil  node.Name()=" + node.Name())
-	}
+func (this *root) Add(nodes ...IMinNode) {
+	for _, node := range nodes {
+		if this.Get(node.Name()) != nil {
+			this.Panic("Get(node.Name()) != nil  node.Name()=" + node.Name())
+		}
 
-	this.minNodes = append(this.minNodes, node)
+		this.minNodes = append(this.minNodes, node)
 
-	if node.(INode) != nil {
-		this.nodes = append(this.nodes, node.(INode))
+		if node.(INode) != nil {
+			this.nodes = append(this.nodes, node.(INode))
+		}
 	}
 }
 
@@ -152,7 +154,7 @@ func (this *root) State() {
 }
 
 func (this *root) OnStateInfo(counts ...*uint) *StateInfo {
-	panic("do not call this func...")
+	this.Panic("do not call this func...")
 	return nil
 }
 

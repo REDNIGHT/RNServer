@@ -5,7 +5,7 @@ import ()
 func mian() {
 	root := NewRoot("test...")
 
-	//root.AddNode(node)
+	//root.Add(node)
 
 	root.Init()
 	root.Register()
