@@ -7,8 +7,10 @@ import (
 
 type root struct {
 	Node
-	minNodes []IMinNode
-	nodes    []INode
+	minNodes     []IMinNode
+	messageNodes []IMessage
+	nodes        []INode
+	ns           []IName
 }
 
 //
@@ -18,7 +20,7 @@ func NewRoot(serverName string) *root {
 	if _root != nil {
 		panic("_root != nil")
 	}
-	_root = &root{NewNode(serverName), make([]IMinNode, 0), make([]INode, 0)}
+	_root = &root{NewNode(serverName), make([]IMinNode, 0), make([]IMessage, 0), make([]INode, 0), make([]IName, 0)}
 	return _root
 }
 func Root() *root {
@@ -26,47 +28,56 @@ func Root() *root {
 }
 
 //
-func (this *root) Add(nodes ...IMinNode) {
-	for _, node := range nodes {
-		if this.Get(node.Name()) != nil {
-			this.Panic("Get(node.Name()) != nil  node.Name()=" + node.Name())
+func (this *root) Add(ns ...IName) {
+	for _, n := range ns {
+		if this.Get(n.Name()) != nil {
+			this.Panic("Get(n.Name()) != nil  n.Name()=" + n.Name())
 		}
 
-		this.minNodes = append(this.minNodes, node)
-
-		if node.(INode) != nil {
-			this.nodes = append(this.nodes, node.(INode))
+		if imn, b := n.(IMinNode); b == true {
+			this.minNodes = append(this.minNodes, imn)
 		}
+
+		if im, b := n.(IMessage); b == true {
+			this.messageNodes = append(this.messageNodes, im)
+		}
+
+		if n, b := n.(INode); b == true {
+			this.nodes = append(this.nodes, n)
+		}
+
+		this.ns = append(this.ns, n)
 	}
 }
-func (this *root) Get(name string) IMinNode {
-	for i := 0; i < len(this.minNodes); i++ {
-		if this.minNodes[i].Name() == name {
-			return this.minNodes[i]
+func (this *root) Get(name string) IName {
+	for i := 0; i < len(this.ns); i++ {
+		if this.ns[i].Name() == name {
+			return this.ns[i]
 		}
 	}
 
 	return nil
 }
+
 func (this *root) GetCount() int {
-	return len(this.minNodes)
+	return len(this.ns)
 }
-func (this *root) GetByIndex(index int) IMinNode {
-	return this.minNodes[index]
+func (this *root) GetByIndex(index int) IName {
+	return this.ns[index]
 }
-func (this *root) ForEach(f func(IMinNode)) {
+func (this *root) ForEach(f func(IName)) {
 	f(this)
 
-	for i := 0; i < len(this.minNodes); i++ {
-		f(this.minNodes[i])
+	for i := 0; i < len(this.ns); i++ {
+		f(this.ns[i])
 	}
 }
 func (this *root) BroadcastMessage(f func(IMessage)) {
-	this.ForEach(func(node IMinNode) {
-		if im, b := node.(IMessage); b == true {
-			im.SendMessage(f)
-		}
-	})
+	this.SendMessage(f)
+
+	for i := 0; i < len(this.messageNodes); i++ {
+		this.messageNodes[i].SendMessage(f)
+	}
 }
 
 //
@@ -76,7 +87,7 @@ func (this *root) Init() {
 		n := this.nodes[i]
 		n.Init()
 
-		n.Log("Init()")
+		this.Log("%v.Init()", n)
 	}
 }
 
@@ -86,17 +97,18 @@ func (this *root) Register() {
 		n := this.nodes[i]
 		n.Register()
 
-		n.Log("Register()")
+		this.Log("%v.Register()", n)
 	}
 }
 
 func (this *root) Run() {
-	for i := 0; i < len(this.minNodes); i++ {
+	for i := 0; i < len(this.ns); i++ {
 
-		n := this.minNodes[i]
-		go n.Run()
-
-		n.Log("Run()")
+		n, b := this.ns[i].(IRun)
+		if b {
+			go n.Run()
+			this.Log("%v.Run()", n)
+		}
 	}
 
 	//
@@ -127,7 +139,7 @@ func (this *root) Close() {
 		n := this.nodes[i]
 		n.Close()
 
-		n.Log("Close()")
+		this.Log("%v.Close()", n)
 	}
 }
 
@@ -137,6 +149,6 @@ func (this *root) Destroy() {
 		n := this.nodes[i]
 		n.Destroy()
 
-		n.Log("Destroy()")
+		this.Log("%v.Destroy()", n)
 	}
 }

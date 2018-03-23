@@ -185,7 +185,7 @@ func (this *State) Run() {
 			this.saveMax()
 
 		case <-debugChanStateTicker:
-			Root().ForEach(func(node IMinNode) {
+			Root().ForEach(func(node IName) {
 				if is, b := node.(IState); b == true {
 					is.DebugChanState(this.InChanOverload)
 				}
@@ -539,7 +539,7 @@ func (this *StateProxy) Run() {
 			go sendMessageStateInfo(this.In, nil)
 
 		case <-debugChanStateTicker:
-			Root().ForEach(func(node IMinNode) {
+			Root().ForEach(func(node IName) {
 				if is, b := node.(IState); b == true {
 					is.DebugChanState(this.InChanOverload)
 				}

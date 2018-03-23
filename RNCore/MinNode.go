@@ -10,7 +10,7 @@ type IMinNode interface {
 
 	Run()
 
-	Log(format string, a ...interface{})
+	//Log(format string, a ...interface{})
 }
 
 //

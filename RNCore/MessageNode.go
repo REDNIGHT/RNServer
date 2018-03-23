@@ -1,5 +1,9 @@
 package RNCore
 
+import (
+	"reflect"
+)
+
 type IMessage interface {
 	MessageChan() chan func(IMessage)
 	SendMessage(func(IMessage))
@@ -46,4 +50,25 @@ func (this *MessageNode) Run() {
 			}
 		}
 	}
+}
+
+//
+func (this *MessageNode) Name() string { return reflect.TypeOf(this).String() }
+
+func (this *MessageNode) Type_Name() string {
+	return this.Name()
+}
+
+func (this *MessageNode) SetOutNodeInfos(node_chan_Names ...string) {
+	nodeInfos := &NodeInfo{this.Type_Name(), node_chan_Names}
+
+	/*if len(nodeInfos.OutNames) == 1 {
+		nodeInfos.OutNames[0] = fmt.Sprintf(nodeName+".%v", nodeInfos.OutNames[0])
+	} else {
+		for i := 0; i < len(nodeInfos.OutNames); i++ {
+			nodeInfos.OutNames[i] = fmt.Sprintf(nodeName+".%v", nodeInfos.OutNames[i])
+		}
+	}*/
+
+	InNodeInfo() <- nodeInfos
 }

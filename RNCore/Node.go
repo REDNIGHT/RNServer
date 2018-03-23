@@ -12,7 +12,7 @@ type INode interface {
 	Close()
 	Destroy()
 
-	Log(format string, a ...interface{})
+	//Log(format string, a ...interface{})
 }
 
 //
@@ -23,9 +23,10 @@ type Node struct {
 	InTotal uint
 }
 
-func NewNode(name string) Node {
-	return Node{NewMinNode(name), NewMessageNode(), 0}
-}
+func NewNode(name string) Node { return Node{NewMinNode(name), NewMessageNode(), 0} }
+
+func (this *Node) Name() string      { return this.MinNode.Name() }
+func (this *Node) Type_Name() string { return this.MinNode.Type_Name() }
 
 //INode
 func (this *Node) Init()     {}

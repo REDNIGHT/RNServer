@@ -31,10 +31,6 @@ func Debug(node IName, format string, a ...interface{}) {
 	inLog <- doPrintf(node, printDebugLevel, format, a)
 }
 
-type IName interface {
-	Type_Name() string
-}
-
 func doPrintf(node IName, printLevel string, format string, a ...interface{}) *logData {
 	return &logData{time.Now(), Root().Name(), node.Type_Name(), printLevel, fmt.Sprintf(format, a...)}
 }
