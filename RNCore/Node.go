@@ -17,13 +17,14 @@ type INode interface {
 
 //
 type Node struct {
-	MinNode2
+	MinNode
+	MessageNode
 
 	InTotal uint
 }
 
 func NewNode(name string) Node {
-	return Node{NewMinNode2(name), 0}
+	return Node{NewMinNode(name), NewMessageNode(), 0}
 }
 
 //INode
@@ -57,9 +58,9 @@ func (this *Node) Destroy() {
 
 //IState
 func (this *Node) GetStateInfo() *StateInfo {
-	it := this.InTotal
+	inTotal := this.InTotal
 	this.InTotal = 0
-	return NewStateInfo(this, it)
+	return NewStateInfo(this, inTotal)
 }
 
 func (this *Node) DebugChanState(chanOverload chan *ChanOverload) {
