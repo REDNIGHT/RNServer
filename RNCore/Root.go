@@ -11,6 +11,7 @@ type root struct {
 	nodes    []INode
 }
 
+//
 var _root *root
 
 func NewRoot(serverName string) *root {
@@ -24,6 +25,7 @@ func Root() *root {
 	return _root
 }
 
+//
 func (this *root) Add(nodes ...IMinNode) {
 	for _, node := range nodes {
 		if this.Get(node.Name()) != nil {
@@ -37,7 +39,6 @@ func (this *root) Add(nodes ...IMinNode) {
 		}
 	}
 }
-
 func (this *root) Get(name string) IMinNode {
 	for i := 0; i < len(this.minNodes); i++ {
 		if this.minNodes[i].Name() == name {
@@ -47,7 +48,30 @@ func (this *root) Get(name string) IMinNode {
 
 	return nil
 }
+func (this *root) GetCount() int {
+	return len(this.minNodes)
+}
+func (this *root) GetByIndex(index int) IMinNode {
+	return this.minNodes[index]
+}
+func (this *root) ForEach(f func(IMinNode)) {
+	f(this)
 
+	for i := 0; i < len(this.minNodes); i++ {
+		f(this.minNodes[i])
+	}
+}
+func (this *root) BroadcastMessage(f func(IMessage)) {
+	this.ForEach(func(node IMinNode) {
+		if im, b := node.(IMessage); b == true {
+			mc := im.MessageChan()
+			mc <- f
+			<-mc
+		}
+	})
+}
+
+//
 func (this *root) Init() {
 	for i := 0; i < len(this.nodes); i++ {
 
@@ -90,16 +114,11 @@ func (this *root) Run() {
 
 	//
 	for {
-		//
 		select {
-
-		case <-this.StateSig:
-			this.Panic("do not case <-this.StateSig")
-			continue
-
-		case <-this.CloseSig:
-			this.CloseSig <- true
-			return
+		case f := <-this.messageChan:
+			if this.OnMessage(f) == true {
+				return
+			}
 		}
 	}
 }
@@ -121,43 +140,5 @@ func (this *root) Destroy() {
 		n.Destroy()
 
 		n.Log("Destroy()")
-	}
-}
-
-func destroy(n INode) {
-	/*defer func() {
-		if r := recover(); r != nil {
-			if conf.LenStackBuf > 0 {
-				buf := make([]byte, conf.LenStackBuf)
-				l := runtime.Stack(buf, false)
-				log.Error("%v: %s", r, buf[:l])
-			} else {
-				log.Error("%v", r)
-			}
-		}
-	}()*/
-
-	n.Destroy()
-}
-
-//
-func (this *root) State() {
-	//this.Node.State()
-
-	for i := 0; i < len(this.nodes); i++ {
-		n := this.nodes[i]
-		n.State()
-	}
-}
-
-func (this *root) OnStateInfo(counts ...*uint) *StateInfo {
-	this.Panic("do not call this func...")
-	return nil
-}
-
-func (this *root) DebugChanState() {
-	for i := 0; i < len(this.nodes); i++ {
-		n := this.nodes[i]
-		n.DebugChanState()
 	}
 }

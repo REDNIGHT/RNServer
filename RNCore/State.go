@@ -13,24 +13,27 @@ import (
 	"time"
 )
 
-var inStateInfo chan *StateInfo = nil
 var inNodeInfo chan *NodeInfo = nil
-var inChanOverload chan *ChanOverload = nil
 
-func InStateInfo() chan *StateInfo {
-	return inStateInfo
-}
 func InNodeInfo() chan *NodeInfo {
 	return inNodeInfo
 }
+
+var inStateInfo chan *StateInfo = nil
+
+/*func InStateInfo() chan *StateInfo {
+	return inStateInfo
+}
+
+var inChanOverload chan *ChanOverload = nil
+
 func InChanOverload() chan *ChanOverload {
 	return inChanOverload
-}
+}*/
 
 type State struct {
 	Node
 
-	//stateTicker time.Duration //= 60
 	stateTickerSpec string
 	saveMaxSpec     string
 	//每隔5秒执行一次："*/5 * * * * ?"
@@ -71,15 +74,20 @@ type ChanOverload struct {
 }
 
 type IState interface {
+	IMessage
+
 	Name() string
-	OnStateInfo(counts ...*uint) *StateInfo
+
+	GetStateInfo() *StateInfo
+
+	DebugChanState(chan *ChanOverload)
 }
 
 type StateInfo struct {
 	RootName string
 	NodeName string
 
-	InCount uint
+	InTotal uint
 
 	Values    map[string]uint
 	StrValues map[string]string
@@ -95,8 +103,8 @@ type NodeInfo struct {
 	OutNames []string
 }
 
-func NewStateInfo(node INode, inCount uint) *StateInfo {
-	return &StateInfo{Root().Name(), node.Name(), inCount, nil, nil}
+func NewStateInfo(node INode, inTotal uint) *StateInfo {
+	return &StateInfo{Root().Name(), node.Name(), inTotal, nil, nil}
 }
 
 func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
@@ -116,20 +124,20 @@ func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
 
 		make(chan *ChanOverload, InChanCount)}
 
-	if inStateInfo != nil {
+	/*if inStateInfo != nil {
 		panic("inStateInfo != nil")
 	}
-	inStateInfo = state.In
+	inStateInfo = state.In*/
 
 	if inNodeInfo != nil {
 		panic("inNodeInfo != nil")
 	}
 	inNodeInfo = state.InNodeInfo
 
-	if inChanOverload != nil {
+	/*if inChanOverload != nil {
 		panic("inChanOverload != nil")
 	}
-	inChanOverload = state.InChanOverload
+	inChanOverload = state.InChanOverload*/
 
 	return state
 }
@@ -163,40 +171,25 @@ func (this *State) Run() {
 	save := make(chan bool)
 
 	//
-	var inCount uint = 0
 	for {
-		inCount++
+		this.InTotal++
 
 		//
 		select {
 		case <-stateTicker:
-			this.stateInfos = make([]*StateInfo, 0)
-
-			//
-			this.stateInfos = append(this.stateInfos, this.stateInfosProxy...)
-			for _, si := range this.stateInfosProxy {
-				this.stateInfoMap[si.key()] = si
-			}
-			this.stateInfosProxy = make([]*StateInfo, 0)
-
-			//
-			go func() {
-				Root().State()
-				save <- true
-			}()
-
-			continue
+			this.stateTicker(save)
 		case <-save:
 			this.save()
-			continue
 
 		case <-saveMax:
 			this.saveMax()
-			continue
 
 		case <-debugChanStateTicker:
-			Root().DebugChanState()
-			continue
+			Root().ForEach(func(node IMinNode) {
+				if is, b := node.(IState); b == true {
+					is.DebugChanState(this.InChanOverload)
+				}
+			})
 
 		//
 		case stateInfo := <-this.In:
@@ -204,34 +197,50 @@ func (this *State) Run() {
 			this.stateInfos = append(this.stateInfos, stateInfo)
 			this.stateInfoMap[stateInfo.key()] = stateInfo
 
-			continue
-
 		case nodeInfo := <-this.InNodeInfo:
 			if _, b := this.nodeInfoMap[nodeInfo.Name]; b == true {
 				this.Error("b := this.nodeInfoMap[nodeInfo.Name]; b == true  nodeInfo.Name=%v", nodeInfo.Name)
 			}
 			this.nodeInfoMap[nodeInfo.Name] = nodeInfo
-			continue
 
 		case chanOverload := <-this.InChanOverload:
 			this.saveChanOverload(chanOverload)
-			continue
 
 			//
 		case buffer := <-this.InProxy:
 			this.OnInProxy(buffer)
-			continue
 
 			//
-		case <-this.StateSig:
-			this.OnState(&inCount)
-			this.StateSig <- true
-			continue
-
-		case <-this.CloseSig:
-			this.CloseSig <- true
-			return
+		case f := <-this.messageChan:
+			if this.OnMessage(f) == true {
+				return
+			}
 		}
+	}
+}
+
+func (this *State) stateTicker(saveChan chan bool) {
+	this.stateInfos = make([]*StateInfo, 0)
+
+	//
+	this.stateInfos = append(this.stateInfos, this.stateInfosProxy...)
+	for _, si := range this.stateInfosProxy {
+		this.stateInfoMap[si.key()] = si
+	}
+	this.stateInfosProxy = make([]*StateInfo, 0)
+
+	//
+	go sendMessageStateInfo(this.In, saveChan)
+}
+func sendMessageStateInfo(In chan *StateInfo, saveChan chan bool) {
+	Root().BroadcastMessage(func(node IMessage) {
+		if is, b := node.(IState); b == true {
+			In <- is.GetStateInfo()
+		}
+	})
+
+	if saveChan != nil {
+		saveChan <- true
 	}
 }
 
@@ -358,7 +367,7 @@ func (this *State) csvRow(count int) []string {
 	row := make([]string, count)
 	index := 0
 	for _, si := range this.stateInfos {
-		row[index] = fmt.Sprintf("%v", si.InCount)
+		row[index] = fmt.Sprintf("%v", si.InTotal)
 		index++
 
 		if si.Values != nil {
@@ -383,7 +392,7 @@ func (this *State) getFirstRow(count int) []string {
 	firstRow := make([]string, count)
 	index := 0
 	for _, si := range this.stateInfos {
-		firstRow[index] = fmt.Sprintf("%v.%v.%v", si.RootName, si.NodeName, "inCount")
+		firstRow[index] = fmt.Sprintf("%v.%v.%v", si.RootName, si.NodeName, "inTotal")
 		index++
 
 		if si.Values != nil {
@@ -411,8 +420,8 @@ func (this *State) max(count int) {
 
 	index := 0
 	for _, si := range this.stateInfos {
-		if si.InCount > this.maxStateInfos[index].Value {
-			this.maxStateInfos[index].Value = si.InCount
+		if si.InTotal > this.maxStateInfos[index].Value {
+			this.maxStateInfos[index].Value = si.InTotal
 			this.maxStateInfos[index].Time = time.Now()
 		}
 		index++
@@ -443,15 +452,11 @@ func getRowBuffer(row []string) string {
 }
 
 //
-func (this *State) OnStateInfo(counts ...*uint) *StateInfo {
-	return NewStateInfo(this, *counts[0])
-}
-
-func (this *State) DebugChanState() {
-	this.OnDebugChanState("In", len(this.In))
-	this.OnDebugChanState("InProxy", len(this.InProxy))
-	this.OnDebugChanState("InNodeInfo", len(this.InNodeInfo))
-	this.OnDebugChanState("InChanOverload", len(this.InChanOverload))
+func (this *State) DebugChanState(chanOverload chan *ChanOverload) {
+	this.TestChanOverload(chanOverload, "In", len(this.In))
+	this.TestChanOverload(chanOverload, "InProxy", len(this.InProxy))
+	this.TestChanOverload(chanOverload, "InNodeInfo", len(this.InNodeInfo))
+	this.TestChanOverload(chanOverload, "InChanOverload", len(this.InChanOverload))
 }
 
 //----------------------------------------------------------------------------------------------------------------
@@ -459,8 +464,8 @@ func (this *State) DebugChanState() {
 type StateProxy struct {
 	Node
 
-	stateTicker time.Duration //= 60
-	saveMaxSpec string
+	stateTickerSpec string
+	saveMaxSpec     string
 	//每隔5秒执行一次："*/5 * * * * ?"
 	//每隔1分钟执行一次："0 */1 * * * ?"
 	//每天23点执行一次："0 0 23 * * ?"
@@ -484,23 +489,23 @@ type proxyDataJ struct {
 	ChanOverload *ChanOverload
 }
 
-func NewStateProxy(name string, stateTicker time.Duration, saveMaxSpec string) *StateProxy {
-	state := &StateProxy{NewNode(name), stateTicker, saveMaxSpec, make(chan *StateInfo, InChanCount), make(chan *NodeInfo, InChanCount), make(chan *ChanOverload, InChanCount), nil}
+func NewStateProxy(name, stateTickerSpec, saveMaxSpec string) *StateProxy {
+	state := &StateProxy{NewNode(name), stateTickerSpec, saveMaxSpec, make(chan *StateInfo, InChanCount), make(chan *NodeInfo, InChanCount), make(chan *ChanOverload, InChanCount), nil}
 
-	if inStateInfo != nil {
+	/*if inStateInfo != nil {
 		panic("inStateInfo != nil")
 	}
-	inStateInfo = state.In
+	inStateInfo = state.In*/
 
 	if inNodeInfo != nil {
 		panic("inNodeInfo != nil")
 	}
 	inNodeInfo = state.InNodeInfo
 
-	if inChanOverload != nil {
+	/*if inChanOverload != nil {
 		panic("inChanOverload != nil")
 	}
-	inChanOverload = state.InChanOverload
+	inChanOverload = state.InChanOverload*/
 	return state
 }
 
@@ -510,22 +515,35 @@ func (this *StateProxy) Run() {
 	c := cron.New()
 	c.Start()
 
+	//
+	stateTicker := make(chan bool)
+	if len(this.stateTickerSpec) <= 0 {
+		this.stateTickerSpec = "0 */1 * * * ?" //每分钟执行一次
+	}
+	c.AddFunc(this.stateTickerSpec, func() { stateTicker <- true })
+
 	debugChanStateTicker := make(chan bool)
 	if RNCDebug {
 		c.AddFunc(RNCDebugStateTickerSpec, func() { debugChanStateTicker <- true })
 	}
 
 	//
-	var inCount uint = 0
+	var inTotal uint = 0
 	for {
-		inCount++
+		inTotal++
 
 		//
 		select {
 
-		case <-time.After(time.Second * this.stateTicker):
-			go func() { Root().State() }()
-			continue
+		case <-stateTicker:
+			go sendMessageStateInfo(this.In, nil)
+
+		case <-debugChanStateTicker:
+			Root().ForEach(func(node IMinNode) {
+				if is, b := node.(IState); b == true {
+					is.DebugChanState(this.InChanOverload)
+				}
+			})
 
 			//
 		case stateInfo := <-this.In:
@@ -536,18 +554,15 @@ func (this *StateProxy) Run() {
 			} else {
 				this.Error("json.Marshal(stateInfo)  err=%v", err)
 			}
-			continue
 
 			//
 		case nodeInfo := <-this.InNodeInfo:
-
 			buffer, err := json.Marshal(&proxyDataJ{nil, nodeInfo, nil})
 			if err == nil {
 				this.Out(buffer)
 			} else {
 				this.Error("json.Marshal(nodeInfo)  err=%v", err)
 			}
-			continue
 
 			//
 		case chanOverload := <-this.InChanOverload:
@@ -558,26 +573,18 @@ func (this *StateProxy) Run() {
 			} else {
 				this.Error("json.Marshal(nodeInfo)  err=%v", err)
 			}
-			continue
 
-		case <-debugChanStateTicker:
-			Root().DebugChanState()
-			continue
-
-		case <-this.StateSig:
-			this.OnState(&inCount)
-			this.StateSig <- true
-			continue
-
-		case <-this.CloseSig:
-			this.CloseSig <- true
-			return
+			//
+		case f := <-this.messageChan:
+			if this.OnMessage(f) == true {
+				return
+			}
 		}
 	}
 }
 
-func (this *StateProxy) DebugChanState() {
-	this.OnDebugChanState("In", len(this.In))
-	this.OnDebugChanState("InNodeInfo", len(this.InNodeInfo))
-	this.OnDebugChanState("InChanOverload", len(this.InChanOverload))
+func (this *StateProxy) DebugChanState(chanOverload chan *ChanOverload) {
+	this.TestChanOverload(chanOverload, "In", len(this.In))
+	this.TestChanOverload(chanOverload, "InNodeInfo", len(this.InNodeInfo))
+	this.TestChanOverload(chanOverload, "InChanOverload", len(this.InChanOverload))
 }

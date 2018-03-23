@@ -81,9 +81,8 @@ func (this *TCPSockets) Out(
 
 func (this *TCPSockets) Run() {
 	//
-	var inCount uint = 0
 	for {
-		inCount++
+		this.InTotal++
 
 		select {
 		case conn := <-this.InAddConn:
@@ -126,16 +125,10 @@ func (this *TCPSockets) Run() {
 			this.removeSocketByName(name)
 
 			//
-		case <-this.StateSig:
-			this.OnState(&inCount)
-			this.StateSig <- true
-			continue
-
-		case <-this.CloseSig:
-			for _, s := range this.sockets {
-				this.removeSocket(uintptr(unsafe.Pointer(s)))
+		case f := <-this.MessageChan():
+			if this.OnMessage(f) == true {
+				return
 			}
-			this.CloseSig <- true
 			return
 		}
 	}
@@ -261,8 +254,8 @@ type _TCPSocketsStateInfo struct {
 	InCount uint
 }
 
-func (this *TCPSockets) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
-	si := RNCore.NewStateInfo(this, *counts[0])
+func (this *TCPSockets) GetStateInfo() *RNCore.StateInfo {
+	si := this.Node.GetStateInfo()
 
 	si.Values = map[string]uint{
 		"maxSocketCount":     uint(this.MaxSocketCount),
@@ -271,13 +264,13 @@ func (this *TCPSockets) OnStateInfo(counts ...*uint) *RNCore.StateInfo {
 	return si
 }
 
-func (this *TCPSockets) DebugChanState() {
-	this.OnDebugChanState("InAddConn", len(this.InAddConn))
-	this.OnDebugChanState("InAddConnWithName", len(this.InAddConnWithName))
-	this.OnDebugChanState("InRemoveSocketByName", len(this.InRemoveSocketByName))
-	this.OnDebugChanState("InRemoveSocket", len(this.InRemoveSocket))
+func (this *TCPSockets) DebugChanState(chanOverload chan *RNCore.ChanOverload) {
+	this.TestChanOverload(chanOverload, "InAddConn", len(this.InAddConn))
+	this.TestChanOverload(chanOverload, "InAddConnWithName", len(this.InAddConnWithName))
+	this.TestChanOverload(chanOverload, "InRemoveSocketByName", len(this.InRemoveSocketByName))
+	this.TestChanOverload(chanOverload, "InRemoveSocket", len(this.InRemoveSocket))
 
-	this.OnDebugChanState("InSendBuffer", len(this.InSendBuffer))
-	this.OnDebugChanState("InSendBufferByName", len(this.InSendBufferByName))
-	this.OnDebugChanState("InBroadcast", len(this.InBroadcast))
+	this.TestChanOverload(chanOverload, "InSendBuffer", len(this.InSendBuffer))
+	this.TestChanOverload(chanOverload, "InSendBufferByName", len(this.InSendBufferByName))
+	this.TestChanOverload(chanOverload, "InBroadcast", len(this.InBroadcast))
 }

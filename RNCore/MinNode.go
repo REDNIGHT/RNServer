@@ -7,6 +7,7 @@ import (
 
 type IMinNode interface {
 	Name() string
+
 	Run()
 
 	Log(format string, a ...interface{})
@@ -28,10 +29,7 @@ func (this *MinNode) Type_Name() string {
 }
 
 //
-func (this *MinNode) SetOutNodeInfo(outNames ...string) {
-}
-
-func (this *Node) SetOutNodeInfos(node_chan_Names ...string) {
+func (this *MinNode) SetOutNodeInfos(node_chan_Names ...string) {
 	nodeInfos := &NodeInfo{this.Type_Name(), node_chan_Names}
 
 	/*if len(nodeInfos.OutNames) == 1 {

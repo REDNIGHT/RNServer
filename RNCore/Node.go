@@ -13,83 +13,79 @@ type INode interface {
 	Destroy()
 
 	Log(format string, a ...interface{})
-
-	State()
-	DebugChanState()
 }
 
 //
 type Node struct {
 	MinNode
 
-	//
-	StateSig chan bool
+	messageChan chan func(node IMessage)
 
-	//
-	CloseSig chan bool
+	InTotal uint
 }
 
 func NewNode(name string) Node {
-	return Node{NewMinNode(name), make(chan bool), make(chan bool)}
+	return Node{NewMinNode(name), make(chan func(IMessage)), 0}
 }
+
+func (this *Node) MessageChan() chan func(node IMessage) { return this.messageChan }
 
 func (this *Node) Init()     {}
 func (this *Node) Register() {}
 func (this *Node) Run() {
 	this.Panic("//todo... Run")
 
-	var inCount uint = 0
 	for {
-		inCount++
+		this.InTotal++
 
 		//
 		select {
 
-		case <-this.StateSig:
-			this.OnState(&inCount)
-			this.StateSig <- true
-			continue
-
-		case <-this.CloseSig:
-			this.CloseSig <- true
-			return
+		case f := <-this.messageChan:
+			if this.OnMessage(f) == true {
+				return
+			}
 		}
+	}
+}
+func (this *Node) OnMessage(f func(IMessage)) (close bool) {
+	if f != nil {
+		f(this)
+		this.messageChan <- nil
+
+		return false
+
+	} else {
+
+		//CloseSig
+		this.messageChan <- nil
+
+		return true
 	}
 }
 
 //
-func (this *Node) State() {
-	this.StateSig <- true
-	<-this.StateSig
-}
-func (this *Node) OnState(counts ...*uint) {
-	InStateInfo() <- IState(this).OnStateInfo(counts...)
-
-	//this.beginStateTime = time.Now()
-	for i := 0; i < len(counts); i++ {
-		*counts[i] = 0
-	}
-}
-func (this *Node) OnStateInfo(counts ...*uint) *StateInfo {
-	this.Panic("//todo...  OnState")
-	return NewStateInfo(this, 0)
-}
-
-func (this *Node) DebugChanState() {
-	this.Panic("//todo...  DebugChanState")
-	this.OnDebugChanState("StateSig", len(this.StateSig))
-	this.OnDebugChanState("CloseSig", len(this.CloseSig))
-}
-func (this *Node) OnDebugChanState(chanName string, chanLen int) {
-	if chanLen > ChanOverloadLen {
-		InChanOverload() <- &ChanOverload{this.Type_Name() + "." + chanName, chanLen}
-	}
-}
-
 func (this *Node) Close() {
-	this.CloseSig <- true
-	<-this.CloseSig
-	close(this.CloseSig)
+	this.messageChan <- nil
+	<-this.messageChan
+	close(this.messageChan)
 }
 func (this *Node) Destroy() {
+}
+
+//
+func (this *Node) GetStateInfo() *StateInfo {
+	it := this.InTotal
+	this.InTotal = 0
+	return NewStateInfo(this, it)
+}
+
+func (this *Node) DebugChanState(chanOverload chan *ChanOverload) {
+	this.Panic("//todo...  DebugChanState")
+	this.TestChanOverload(chanOverload, "messageChan", len(this.messageChan))
+}
+func (this *Node) TestChanOverload(chanOverload chan *ChanOverload, chanName string, chanLen int) {
+	if chanLen > ChanOverloadLen {
+		chanOverload <- &ChanOverload{this.Type_Name() + "." + chanName, chanLen}
+	}
 }

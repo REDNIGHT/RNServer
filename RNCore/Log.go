@@ -105,14 +105,10 @@ func (this *Log) Run() {
 			this.save(logData)
 			continue
 
-		case <-this.StateSig:
-			this.OnState(&inCount)
-			this.StateSig <- true
-			continue
-
-		case <-this.CloseSig:
-			this.CloseSig <- true
-			return
+		case f := <-this.messageChan:
+			if this.OnMessage(f) == true {
+				return
+			}
 		}
 	}
 }
@@ -129,12 +125,8 @@ func (this *Log) save(logData *logData) {
 }
 
 //
-func (this *Log) OnStateInfo(counts ...*uint) *StateInfo {
-	return NewStateInfo(this, *counts[0])
-}
-
-func (this *Log) DebugChanState() {
-	this.OnDebugChanState("In", len(this.In))
+func (this *Log) DebugChanState(chanOverload chan *ChanOverload) {
+	this.TestChanOverload(chanOverload, "In", len(this.In))
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -171,18 +163,14 @@ func (this *LogProxy) Run() {
 			}
 			continue
 
-		case <-this.StateSig:
-			this.OnState(&inCount)
-			this.StateSig <- true
-			continue
-
-		case <-this.CloseSig:
-			this.CloseSig <- true
-			return
+		case f := <-this.messageChan:
+			if this.OnMessage(f) == true {
+				return
+			}
 		}
 	}
 }
 
-func (this *LogProxy) DebugChanState() {
-	this.OnDebugChanState("In", len(this.In))
+func (this *LogProxy) DebugChanState(chanOverload chan *ChanOverload) {
+	this.TestChanOverload(chanOverload, "In", len(this.In))
 }
