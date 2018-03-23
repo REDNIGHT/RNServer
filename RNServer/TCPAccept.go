@@ -42,7 +42,6 @@ func (this *TCPAccept) Run() {
 
 		//
 		this.Out(conn)
-
 	}
 }
 
