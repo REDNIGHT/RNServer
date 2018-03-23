@@ -29,18 +29,19 @@ func (this *TCPAccept) Run() {
 	//
 	for {
 		//l.(*net.TCPListener).SetDeadline(time.Now().Add(time.Second))
-		if this.listener != nil {
-
-			conn, err := this.listener.Accept()
-			if err != nil {
-				this.Error("err != nil  err=" + err.Error())
-				continue
-			}
-			this.Log("A new Connection  RemoteAddr=" + conn.RemoteAddr().String())
-
-			//
-			this.Out(conn)
+		if this.listener == nil {
+			return
 		}
+
+		conn, err := this.listener.Accept()
+		if err != nil {
+			this.Error("err != nil  err=" + err.Error())
+			continue
+		}
+		this.Log("A new Connection  RemoteAddr=" + conn.RemoteAddr().String())
+
+		//
+		this.Out(conn)
 
 	}
 }
