@@ -28,8 +28,30 @@ func NewNode(name string) Node {
 	return Node{NewMinNode(name), make(chan func(IMessage)), 0}
 }
 
+//IMessage
 func (this *Node) MessageChan() chan func(node IMessage) { return this.messageChan }
+func (this *Node) SendMessage(f func(IMessage)) {
+	mc := this.MessageChan()
+	mc <- f
+	<-mc
+}
+func (this *Node) OnMessage(f func(IMessage)) (close bool) {
+	if f != nil {
+		f(this)
+		this.messageChan <- nil
 
+		return false
+
+	} else {
+
+		//CloseSig
+		this.messageChan <- nil
+
+		return true
+	}
+}
+
+//INode
 func (this *Node) Init()     {}
 func (this *Node) Register() {}
 func (this *Node) Run() {
@@ -48,21 +70,6 @@ func (this *Node) Run() {
 		}
 	}
 }
-func (this *Node) OnMessage(f func(IMessage)) (close bool) {
-	if f != nil {
-		f(this)
-		this.messageChan <- nil
-
-		return false
-
-	} else {
-
-		//CloseSig
-		this.messageChan <- nil
-
-		return true
-	}
-}
 
 //
 func (this *Node) Close() {
@@ -73,7 +80,7 @@ func (this *Node) Close() {
 func (this *Node) Destroy() {
 }
 
-//
+//IState
 func (this *Node) GetStateInfo() *StateInfo {
 	it := this.InTotal
 	this.InTotal = 0

@@ -64,9 +64,7 @@ func (this *root) ForEach(f func(IMinNode)) {
 func (this *root) BroadcastMessage(f func(IMessage)) {
 	this.ForEach(func(node IMinNode) {
 		if im, b := node.(IMessage); b == true {
-			mc := im.MessageChan()
-			mc <- f
-			<-mc
+			im.SendMessage(f)
 		}
 	})
 }
