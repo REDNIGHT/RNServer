@@ -17,38 +17,13 @@ type INode interface {
 
 //
 type Node struct {
-	MinNode
-
-	messageChan chan func(node IMessage)
+	MinNode2
 
 	InTotal uint
 }
 
 func NewNode(name string) Node {
-	return Node{NewMinNode(name), make(chan func(IMessage)), 0}
-}
-
-//IMessage
-func (this *Node) MessageChan() chan func(node IMessage) { return this.messageChan }
-func (this *Node) SendMessage(f func(IMessage)) {
-	mc := this.MessageChan()
-	mc <- f
-	<-mc
-}
-func (this *Node) OnMessage(f func(IMessage)) (close bool) {
-	if f != nil {
-		f(this)
-		this.messageChan <- nil
-
-		return false
-
-	} else {
-
-		//CloseSig
-		this.messageChan <- nil
-
-		return true
-	}
+	return Node{NewMinNode2(name), 0}
 }
 
 //INode
