@@ -4,7 +4,6 @@
 package RNCore
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -75,7 +74,7 @@ type logData struct {
 }
 
 func NewLog(name string) *Log {
-	log := &Log{NewNode(name), make(chan *logData, InChanCount), make(chan []byte, InChanCount)}
+	log := &Log{NewNode(name), make(chan *logData, InChanLen), make(chan []byte, InChanLen)}
 	if inLog == nil {
 		inLog = log.In
 	}
@@ -134,7 +133,7 @@ type LogProxy struct {
 }
 
 func NewLogProxy(name string) *LogProxy {
-	logProxy := &LogProxy{NewNode(name), make(chan *logData, InChanCount), nil}
+	logProxy := &LogProxy{NewNode(name), make(chan *logData, InChanLen), nil}
 	inLog = logProxy.In
 	return logProxy
 }

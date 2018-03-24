@@ -2,7 +2,6 @@ package RNServer
 
 import (
 	"RNCore"
-	"encoding/json"
 	//"time"
 )
 
@@ -19,7 +18,7 @@ type Gate2RPCContent struct {
 }
 
 func NewGate2RPC() *GateSockerBuffer2RPC {
-	return &GateSockerBuffer2RPC{make(chan *SocketBuffer, RNCore.InChanMinCount), nil}
+	return &GateSockerBuffer2RPC{make(chan *SocketBuffer, RNCore.InChanMinLen), nil}
 }
 
 func (this *GateSockerBuffer2RPC) Go() {

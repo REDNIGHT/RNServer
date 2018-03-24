@@ -2,7 +2,6 @@ package RNServer
 
 import (
 	"RNCore"
-	"encoding/json"
 	//"time"
 )
 
@@ -20,7 +19,7 @@ type RouterData struct {
 }
 
 func NewRouter2Socket(name string) *Router2Socket {
-	return &Router2Socket{RNCore.NewMinNode(name), make(chan *Router, RNCore.InChanMinCount), nil}
+	return &Router2Socket{RNCore.NewMinNode(name), make(chan *Router, RNCore.InChanMinLen), nil}
 }
 
 func (this *Router2Socket) Run() {

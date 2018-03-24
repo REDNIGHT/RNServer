@@ -11,7 +11,7 @@ type Broadcast struct {
 }
 
 func NewBroadcast() *Broadcast {
-	return &Broadcast{nil, make([]func(interface{}), InChanMinCount)}
+	return &Broadcast{nil, make([]func(interface{}), InChanMinLen)}
 }
 
 func (this *Broadcast) OutAdd(outs ...func(interface{})) {

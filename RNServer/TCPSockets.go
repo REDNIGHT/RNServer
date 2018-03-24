@@ -58,14 +58,14 @@ func NewTCPSockets(name string, maxSocketCount int) *TCPSockets {
 		sockets:        make(map[uintptr]*Socket),
 		socketsByName:  make(map[string]*Socket),
 
-		InAddConn:            make(chan net.Conn, RNCore.InChanCount),
-		InAddConnWithName:    make(chan *Name_Conn, RNCore.InChanCount),
-		InRemoveSocketByName: make(chan string, RNCore.InChanCount),
-		InRemoveSocket:       make(chan uintptr, RNCore.InChanCount),
+		InAddConn:            make(chan net.Conn, RNCore.InChanLen),
+		InAddConnWithName:    make(chan *Name_Conn, RNCore.InChanLen),
+		InRemoveSocketByName: make(chan string, RNCore.InChanLen),
+		InRemoveSocket:       make(chan uintptr, RNCore.InChanLen),
 
-		InSendBuffer:       make(chan *SocketBuffer, RNCore.InChanCount),
-		InSendBufferByName: make(chan *SocketBufferByName, RNCore.InChanCount),
-		InBroadcast:        make(chan []byte, RNCore.InChanCount)}
+		InSendBuffer:       make(chan *SocketBuffer, RNCore.InChanLen),
+		InSendBufferByName: make(chan *SocketBufferByName, RNCore.InChanLen),
+		InBroadcast:        make(chan []byte, RNCore.InChanLen)}
 }
 
 func (this *TCPSockets) Out(

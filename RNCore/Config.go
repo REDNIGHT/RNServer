@@ -6,8 +6,8 @@ import (
 
 //var ServerName string = "RNServer"
 
-var InChanCount int = 64
-var InChanMinCount int = 32
+var InChanLen int = 64
+var InChanMinLen int = 32
 
 var RNCDebug bool = true
 var RNCDebugStateTickerSpec string = "*/10 * * * * ?"

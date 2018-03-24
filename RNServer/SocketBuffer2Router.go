@@ -5,7 +5,6 @@ package RNServer
 
 import (
 	"RNCore"
-	"encoding/json"
 	//"time"
 )
 
@@ -30,7 +29,7 @@ type JosnData struct {
 
 //
 func NewSocketBuffer2Router(name string) *SocketBuffer2Router {
-	return &SocketBuffer2Router{RNCore.NewMinNode(name), make(chan *SocketBuffer, RNCore.InChanMinCount), nil}
+	return &SocketBuffer2Router{RNCore.NewMinNode(name), make(chan *SocketBuffer, RNCore.InChanMinLen), nil}
 }
 
 func (this *SocketBuffer2Router) Out(out func(*Router)) {

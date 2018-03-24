@@ -2,7 +2,6 @@ package RNServer
 
 import (
 	"RNCore"
-	"encoding/json"
 	"reflect"
 	//"time"
 )
@@ -16,7 +15,7 @@ type RPC struct {
 }
 
 func NewRPC(name string) *RPC {
-	return &RPC{RNCore.NewMinNode(name), make(chan *Gate2RPCContent, RNCore.InChanCount), reflect.Value{}}
+	return &RPC{RNCore.NewMinNode(name), make(chan *Gate2RPCContent, RNCore.InChanLen), reflect.Value{}}
 }
 
 func (this *RPC) Out(out interface{}) {

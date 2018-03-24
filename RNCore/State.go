@@ -6,7 +6,6 @@ package RNCore
 import (
 	"fmt"
 	//"reflect"
-	"encoding/json"
 	"github.com/robfig/cron"
 	"io/ioutil"
 	"os"
@@ -111,18 +110,18 @@ func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
 	state := &State{NewNode(name),
 		stateTickerSpec,
 		saveMaxSpec,
-		make(chan *StateInfo, InChanCount),
-		make(chan []byte, InChanCount),
+		make(chan *StateInfo, InChanLen),
+		make(chan []byte, InChanLen),
 
 		make([]*StateInfo, 0),
 		make([]*StateInfo, 0),
 		make(map[string]*StateInfo),
 		nil,
 
-		make(chan *NodeInfo, InChanCount),
+		make(chan *NodeInfo, InChanLen),
 		make(map[string]*NodeInfo),
 
-		make(chan *ChanOverload, InChanCount)}
+		make(chan *ChanOverload, InChanLen)}
 
 	/*if inStateInfo != nil {
 		panic("inStateInfo != nil")
@@ -490,7 +489,7 @@ type proxyDataJ struct {
 }
 
 func NewStateProxy(name, stateTickerSpec, saveMaxSpec string) *StateProxy {
-	state := &StateProxy{NewNode(name), stateTickerSpec, saveMaxSpec, make(chan *StateInfo, InChanCount), make(chan *NodeInfo, InChanCount), make(chan *ChanOverload, InChanCount), nil}
+	state := &StateProxy{NewNode(name), stateTickerSpec, saveMaxSpec, make(chan *StateInfo, InChanLen), make(chan *NodeInfo, InChanLen), make(chan *ChanOverload, InChanLen), nil}
 
 	/*if inStateInfo != nil {
 		panic("inStateInfo != nil")
