@@ -125,7 +125,7 @@ func (this *TCPSockets) Run() {
 			this.removeSocketByName(name)
 
 			//
-		case f := <-this.MessageChan():
+		case f := <-this.InMessage():
 			if this.OnMessage(f) == true {
 				return
 			}

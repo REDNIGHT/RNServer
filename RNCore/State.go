@@ -210,7 +210,7 @@ func (this *State) Run() {
 			this.OnInProxy(buffer)
 
 			//
-		case f := <-this.messageChan:
+		case f := <-this.inMessage:
 			if this.OnMessage(f) == true {
 				return
 			}
@@ -574,7 +574,7 @@ func (this *StateProxy) Run() {
 			}
 
 			//
-		case f := <-this.messageChan:
+		case f := <-this.inMessage:
 			if this.OnMessage(f) == true {
 				return
 			}

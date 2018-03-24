@@ -83,9 +83,8 @@ func NewLog(name string) *Log {
 
 func (this *Log) Run() {
 
-	var inCount uint = 0
 	for {
-		inCount++
+		this.InTotal++
 
 		//
 		select {
@@ -100,7 +99,7 @@ func (this *Log) Run() {
 			this.save(logData)
 			continue
 
-		case f := <-this.messageChan:
+		case f := <-this.inMessage:
 			if this.OnMessage(f) == true {
 				return
 			}
@@ -158,7 +157,7 @@ func (this *LogProxy) Run() {
 			}
 			continue
 
-		case f := <-this.messageChan:
+		case f := <-this.inMessage:
 			if this.OnMessage(f) == true {
 				return
 			}

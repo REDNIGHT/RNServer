@@ -125,7 +125,7 @@ func (this *root) Run() {
 	//
 	for {
 		select {
-		case f := <-this.messageChan:
+		case f := <-this.inMessage:
 			if this.OnMessage(f) == true {
 				return
 			}

@@ -5,13 +5,13 @@ import (
 )
 
 type IMessage interface {
-	MessageChan() chan func(IMessage)
+	InMessage() chan func(IMessage)
 	SendMessage(func(IMessage))
 }
 
 //
 type MessageNode struct {
-	messageChan chan func(node IMessage)
+	inMessage chan func(node IMessage)
 }
 
 func NewMessageNode() MessageNode {
@@ -19,23 +19,23 @@ func NewMessageNode() MessageNode {
 }
 
 //IMessage
-func (this *MessageNode) MessageChan() chan func(node IMessage) { return this.messageChan }
+func (this *MessageNode) InMessage() chan func(node IMessage) { return this.inMessage }
 func (this *MessageNode) SendMessage(f func(IMessage)) {
-	mc := this.MessageChan()
+	mc := this.InMessage()
 	mc <- f
 	<-mc
 }
 func (this *MessageNode) OnMessage(f func(IMessage)) (close bool) {
 	if f != nil {
 		f(this)
-		this.messageChan <- nil
+		this.inMessage <- nil
 
 		return false
 
 	} else {
 
 		//CloseSig
-		this.messageChan <- nil
+		this.inMessage <- nil
 
 		return true
 	}
@@ -44,7 +44,7 @@ func (this *MessageNode) Run() {
 	for {
 		//
 		select {
-		case f := <-this.messageChan:
+		case f := <-this.inMessage:
 			if this.OnMessage(f) == true {
 				return
 			}

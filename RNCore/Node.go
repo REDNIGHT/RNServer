@@ -40,7 +40,7 @@ func (this *Node) Run() {
 		//
 		select {
 
-		case f := <-this.messageChan:
+		case f := <-this.inMessage:
 			if this.OnMessage(f) == true {
 				return
 			}
@@ -50,9 +50,9 @@ func (this *Node) Run() {
 
 //
 func (this *Node) Close() {
-	this.messageChan <- nil
-	<-this.messageChan
-	close(this.messageChan)
+	this.inMessage <- nil
+	<-this.inMessage
+	close(this.inMessage)
 }
 func (this *Node) Destroy() {
 }
@@ -65,8 +65,7 @@ func (this *Node) GetStateInfo() *StateInfo {
 }
 
 func (this *Node) DebugChanState(chanOverload chan *ChanOverload) {
-	this.Panic("//todo...  DebugChanState")
-	this.TestChanOverload(chanOverload, "messageChan", len(this.messageChan))
+	this.TestChanOverload(chanOverload, "inMessage", len(this.inMessage))
 }
 func (this *Node) TestChanOverload(chanOverload chan *ChanOverload, chanName string, chanLen int) {
 	if chanLen > ChanOverloadLen {
