@@ -2,37 +2,29 @@ package RNServer
 
 import (
 	"RNCore"
-	"gopkg.in/mgo.v2"
+	//"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type LoginDB struct {
-	RNCore.Node
+	RNCore.MongoDB
 
-	url string
-	db  string
-	c   string
-	//user, pass string
-
-	InFind           chan *AccountFindData
-	InInsert         chan *AccountInsertData
-	InUpdatePassword chan *InUpdatePassword
-
-	session    *mgo.Session
-	collection *mgo.Collection
+	InFind           chan *AccountFind
+	InInsert         chan *AccountInsert
+	InUpdatePassword chan *UpdatePassword
 }
 
-type AccountFindData struct {
+type AccountFind struct {
 	Account string
 	CB      func(*AccountData, error)
 }
 
-type AccountInsertData struct {
+type AccountInsert struct {
 	AD *AccountData
 	CB func(error)
 }
 
-type InUpdatePassword struct {
+type UpdatePassword struct {
 	Account string
 	//OldPassword string
 	Password string
@@ -46,23 +38,13 @@ type AccountData struct {
 	Type     string
 }
 
-func NewLoginDB(name string, url, db, c string) *LoginDB {
-	return &LoginDB{RNCore.NewNode(name), url, db, c, make(chan *AccountFindData, RNCore.InChanLen), make(chan *AccountInsertData, RNCore.InChanLen), make(chan *InUpdatePassword, RNCore.InChanLen), nil, nil}
+func NewLoginDB(name, url, db, c string) *LoginDB {
+	return &LoginDB{RNCore.NewMongoDB(name, url, db, c), make(chan *AccountFind, RNCore.InChanLen), make(chan *AccountInsert, RNCore.InChanLen), make(chan *UpdatePassword, RNCore.InChanLen)}
 }
 
 func (this *LoginDB) Run() {
 
-	//
-	session, err := mgo.Dial(this.url)
-	if err != nil {
-		this.Panic(err.Error())
-	}
-	defer session.Close()
-	session.SetMode(mgo.Monotonic, true)
-	this.session = session
-
-	this.collection = session.DB(this.db).C(this.c)
-	this.collection.EnsureIndexKey("Account", "ID")
+	this.Collection.EnsureIndexKey("Account", "ID")
 
 	//
 	for {
@@ -86,43 +68,44 @@ func (this *LoginDB) Run() {
 }
 
 //
-func (this *LoginDB) find(f *AccountFindData) {
+func (this *LoginDB) find(i *AccountFind) {
 	go func() {
 		result := &AccountData{}
-		err := this.collection.Find(bson.M{"Account": f.Account}).One(result)
-		f.CB(result, err)
+		err := this.Collection.Find(bson.M{"Account": i.Account}).One(result)
+		i.CB(result, err)
 	}()
 }
 
-func (this *LoginDB) insert(f *AccountInsertData) {
+func (this *LoginDB) insert(i *AccountInsert) {
 	go func() {
-		err := this.collection.Insert(f.AD)
-		f.CB(err)
+		err := this.Collection.Insert(i.AD)
+		i.CB(err)
 	}()
 }
 
-func (this *LoginDB) updatePassword(f *InUpdatePassword) {
+func (this *LoginDB) updatePassword(i *UpdatePassword) {
 	go func() {
-		err := this.collection.Update(bson.M{"Account": f.Account}, bson.M{"$set": bson.M{"Password": f.Password}})
-		f.CB(err)
+		err := this.Collection.Update(bson.M{"Account": i.Account}, bson.M{"$set": bson.M{"Password": i.Password}})
+		i.CB(err)
 	}()
 }
 
 //
 /*func (this *LoginDB) MFind(account string) (*AccountData, error) {
 	result := &AccountData{}
-	err := this.collection.Find(bson.M{"Account": account}).One(result)
+	err := this.Collection.Find(bson.M{"Account": account}).One(result)
 	return result, err
 }
 
 func (this *LoginDB) MInsert(ad *AccountData) error {
-	return this.collection.Insert(ad)
+	return this.Collection.Insert(ad)
 }*/
 
 //
 func (this *LoginDB) DebugChanState(chanOverload chan *RNCore.ChanOverload) {
-	this.TestChanOverload(chanOverload, "InGet", len(this.InFind))
+	this.TestChanOverload(chanOverload, "InFind", len(this.InFind))
 	this.TestChanOverload(chanOverload, "InInsert", len(this.InInsert))
+	this.TestChanOverload(chanOverload, "InUpdatePassword", len(this.InUpdatePassword))
 
 	this.Node.DebugChanState(chanOverload)
 }
