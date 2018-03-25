@@ -34,7 +34,7 @@ func (this *_)example() {
 		if err != nil {
 			return
 		}
-		this.SendMessage(func(_ RNCore.IMessage) {
+		this.SendMessage(func(_this RNCore.IMessage) {
 			_ = ad.Account
 		})
 	})

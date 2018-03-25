@@ -29,9 +29,9 @@ func (this *MessageNode) OnMessage(f func(IMessage)) (close bool) {
 
 	} else {
 
-		//CloseSig
 		this.inMessage <- nil
 
+		//CloseSig
 		return true
 	}
 }
