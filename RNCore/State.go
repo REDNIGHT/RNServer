@@ -102,7 +102,7 @@ type NodeInfo struct {
 	OutNames []string
 }
 
-func NewStateInfo(node INode, inTotal uint) *StateInfo {
+func NewStateInfo(node IName, inTotal uint) *StateInfo {
 	return &StateInfo{Root().Name(), node.Name(), inTotal, nil, nil}
 }
 

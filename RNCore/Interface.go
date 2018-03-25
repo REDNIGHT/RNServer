@@ -5,6 +5,15 @@ type IName interface {
 	Type_Name() string
 }
 
+type IMessage interface {
+	InMessage() chan func(IMessage)
+	SendMessage(func(IMessage))
+}
+
 type IRun interface {
 	Run()
+}
+
+type IClose interface {
+	Close()
 }

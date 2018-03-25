@@ -9,26 +9,9 @@ import (
 type LoginDB struct {
 	RNCore.MongoDB
 
-	InFind           chan *AccountFind
-	InInsert         chan *AccountInsert
-	InUpdatePassword chan *UpdatePassword
-}
-
-type AccountFind struct {
-	Account string
-	CB      func(*AccountData, error)
-}
-
-type AccountInsert struct {
-	AD *AccountData
-	CB func(error)
-}
-
-type UpdatePassword struct {
-	Account string
-	//OldPassword string
-	Password string
-	CB       func(error)
+	//InFind           chan *FindAccount
+	//InInsert         chan *InsertAccount
+	//InUpdatePassword chan *UpdatePassword
 }
 
 type AccountData struct {
@@ -39,18 +22,49 @@ type AccountData struct {
 }
 
 func NewLoginDB(name, url, db, c string) *LoginDB {
-	return &LoginDB{RNCore.NewMongoDB(name, url, db, c), make(chan *AccountFind, RNCore.InChanLen), make(chan *AccountInsert, RNCore.InChanLen), make(chan *UpdatePassword, RNCore.InChanLen)}
+	//ldb := &LoginDB{RNCore.NewMongoDB(name, url, db, c), make(chan *FindAccount, RNCore.InChanLen), make(chan *InsertAccount, RNCore.InChanLen), make(chan *UpdatePassword, RNCore.InChanLen)}
+	ldb := &LoginDB{RNCore.NewMongoDB(name, url, db, c, "Account", "ID")}
+	return ldb
 }
 
+/*
+func (this *_)example() {
+	ldb : LoginDB
+	ldb.Find("acc", func(ad *AccountData, err error) {
+		if err != nil {
+			return
+		}
+		this.SendMessage(func(_ RNCore.IMessage) {
+			_ = ad.Account
+		})
+	})
+}
+*/
+func (this *LoginDB) Find(Account string, cb func(*AccountData, error)) {
+	go func() {
+		result := &AccountData{}
+		err := this.Collection.Find(bson.M{"Account": Account}).One(result)
+		cb(result, err)
+	}()
+}
+
+func (this *LoginDB) Insert(ad *AccountData, cb func(error)) {
+	go func() {
+		err := this.Collection.Insert(ad)
+		cb(err)
+	}()
+}
+
+func (this *LoginDB) UpdatePassword(Account, Password string, cb func(error)) {
+	go func() {
+		err := this.Collection.Update(bson.M{"Account": Account}, bson.M{"$set": bson.M{"Password": Password}})
+		cb(err)
+	}()
+}
+
+/*
 func (this *LoginDB) Run() {
-
-	this.Collection.EnsureIndexKey("Account", "ID")
-
-	//
 	for {
-		this.InTotal++
-
-		//
 		select {
 		case i := <-this.InFind:
 			this.find(i)
@@ -58,17 +72,16 @@ func (this *LoginDB) Run() {
 			this.insert(i)
 		case i := <-this.InUpdatePassword:
 			this.updatePassword(i)
-
-		case f := <-this.InMessage():
-			if this.OnMessage(f) == true {
-				return
-			}
 		}
 	}
 }
 
-//
-func (this *LoginDB) find(i *AccountFind) {
+type FindAccount struct {
+	Account string
+	CB      func(*AccountData, error)
+}
+
+func (this *LoginDB) find(i *FindAccount) {
 	go func() {
 		result := &AccountData{}
 		err := this.Collection.Find(bson.M{"Account": i.Account}).One(result)
@@ -76,11 +89,23 @@ func (this *LoginDB) find(i *AccountFind) {
 	}()
 }
 
-func (this *LoginDB) insert(i *AccountInsert) {
+type InsertAccount struct {
+	AD *AccountData
+	CB func(error)
+}
+
+func (this *LoginDB) insert(i *InsertAccount) {
 	go func() {
 		err := this.Collection.Insert(i.AD)
 		i.CB(err)
 	}()
+}
+
+type UpdatePassword struct {
+	Account string
+	//OldPassword string
+	Password string
+	CB       func(error)
 }
 
 func (this *LoginDB) updatePassword(i *UpdatePassword) {
@@ -89,6 +114,7 @@ func (this *LoginDB) updatePassword(i *UpdatePassword) {
 		i.CB(err)
 	}()
 }
+*/
 
 //
 /*func (this *LoginDB) MFind(account string) (*AccountData, error) {
@@ -100,12 +126,3 @@ func (this *LoginDB) updatePassword(i *UpdatePassword) {
 func (this *LoginDB) MInsert(ad *AccountData) error {
 	return this.Collection.Insert(ad)
 }*/
-
-//
-func (this *LoginDB) DebugChanState(chanOverload chan *RNCore.ChanOverload) {
-	this.TestChanOverload(chanOverload, "InFind", len(this.InFind))
-	this.TestChanOverload(chanOverload, "InInsert", len(this.InInsert))
-	this.TestChanOverload(chanOverload, "InUpdatePassword", len(this.InUpdatePassword))
-
-	this.Node.DebugChanState(chanOverload)
-}

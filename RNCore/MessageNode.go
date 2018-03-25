@@ -4,11 +4,6 @@ import (
 	"reflect"
 )
 
-type IMessage interface {
-	InMessage() chan func(IMessage)
-	SendMessage(func(IMessage))
-}
-
 //
 type MessageNode struct {
 	inMessage chan func(node IMessage)

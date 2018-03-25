@@ -4,17 +4,6 @@ import (
 //"time"
 )
 
-type INode interface {
-	Name() string
-	Init()
-	Register()
-	Run()
-	Close()
-	Destroy()
-
-	//Log(format string, a ...interface{})
-}
-
 //
 type Node struct {
 	MinNode
@@ -29,8 +18,6 @@ func (this *Node) Name() string      { return this.MinNode.Name() }
 func (this *Node) Type_Name() string { return this.MinNode.Type_Name() }
 
 //INode
-func (this *Node) Init()     {}
-func (this *Node) Register() {}
 func (this *Node) Run() {
 	this.Panic("//todo... Run")
 
@@ -53,8 +40,6 @@ func (this *Node) Close() {
 	this.inMessage <- nil
 	<-this.inMessage
 	close(this.inMessage)
-}
-func (this *Node) Destroy() {
 }
 
 //IState
