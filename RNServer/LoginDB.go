@@ -2,16 +2,18 @@ package RNServer
 
 import (
 	"RNCore"
-	//"gopkg.in/mgo.v2"
+	"errors"
 	"gopkg.in/mgo.v2/bson"
+	"strings"
+	//"gopkg.in/mgo.v2"
 )
 
 type LoginDB struct {
 	RNCore.MongoDB
 
-	//InFind           chan *FindAccount
-	//InInsert         chan *InsertAccount
-	//InUpdatePassword chan *UpdatePassword
+	InFind           chan *FindAccount
+	InInsert         chan *InsertAccount
+	InUpdatePassword chan *UpdatePassword
 }
 
 type AccountData struct {
@@ -22,52 +24,37 @@ type AccountData struct {
 }
 
 func NewLoginDB(name, url, db, c string) *LoginDB {
-	//ldb := &LoginDB{RNCore.NewMongoDB(name, url, db, c), make(chan *FindAccount, RNCore.InChanLen), make(chan *InsertAccount, RNCore.InChanLen), make(chan *UpdatePassword, RNCore.InChanLen)}
-	ldb := &LoginDB{RNCore.NewMongoDB(name, url, db, c, "Account", "ID")}
-	return ldb
+	return &LoginDB{RNCore.NewMongoDB(name, url, db, c), make(chan *FindAccount, RNCore.InChanLen), make(chan *InsertAccount, RNCore.InChanLen), make(chan *UpdatePassword, RNCore.InChanLen)}
 }
 
 /*
-func (this *_)example() {
-	ldb : LoginDB
-	ldb.Find("acc", func(ad *AccountData, err error) {
+func example() {
+	ldb := NewLoginDB("", "", "", "")
+
+	cb := func(ad *AccountData, err error) {
 		if err != nil {
 			return
 		}
 		this.SendMessage(func(_this RNCore.IMessage) {
 			_ = ad.Account
 		})
-	})
+	}
+	ldb.InFind <- &FindAccount{"acc", cb}
 }
 */
-func (this *LoginDB) Find(Account string, cb func(*AccountData, error)) {
-	go func() {
-		result := &AccountData{}
-		err := this.Collection.Find(bson.M{"Account": Account}).One(result)
-		cb(result, err)
-	}()
-}
 
-func (this *LoginDB) Insert(ad *AccountData, cb func(error)) {
-	go func() {
-		err := this.Collection.Insert(ad)
-		cb(err)
-	}()
-}
-
-func (this *LoginDB) UpdatePassword(Account, Password string, cb func(error)) {
-	go func() {
-		err := this.Collection.Update(bson.M{"Account": Account}, bson.M{"$set": bson.M{"Password": Password}})
-		cb(err)
-	}()
-}
-
-/*
 func (this *LoginDB) Run() {
 	for {
 		select {
 		case i := <-this.InFind:
-			this.find(i)
+			is := make([]*FindAccount, len(this.InFind)+1)
+			is[0] = i
+			index := 1
+			for i = range this.InFind {
+				is[index] = i
+				index++
+			}
+			this.find(is...)
 		case i := <-this.InInsert:
 			this.insert(i)
 		case i := <-this.InUpdatePassword:
@@ -81,12 +68,47 @@ type FindAccount struct {
 	CB      func(*AccountData, error)
 }
 
-func (this *LoginDB) find(i *FindAccount) {
-	go func() {
-		result := &AccountData{}
-		err := this.Collection.Find(bson.M{"Account": i.Account}).One(result)
-		i.CB(result, err)
-	}()
+func (this *LoginDB) find(is ...*FindAccount) {
+	//todo...
+	//测试是否返回一样个数的结果 会出现某项数据不存在而返回少量一个的情况
+
+	arr := make([]bson.M, len(is))
+	for index, i := range is {
+		arr[index] = bson.M{"Account": i.Account}
+	}
+	query := bson.M{"$and": arr}
+
+	iter := this.Collection.Find(query).Iter()
+	defer iter.Close()
+
+	if iter.Err() != nil {
+		this.Error(iter.Err().Error())
+		return
+	}
+
+	index := 0
+	err_str := "<can not find> "
+	result := &AccountData{}
+	for iter.Next(result) {
+		for _, i := range is {
+			if i.Account == result.Account {
+				i.CB(result, nil)
+			} else {
+				i.Account = err_str + i.Account
+			}
+		}
+		index++
+	}
+
+	//
+	if index != len(is) {
+		this.Error("find  index != len(is) index=%v  len(is)=%v", index, len(is))
+		for _, i := range is {
+			if strings.Index(i.Account, err_str) == 0 {
+				i.CB(nil, errors.New(err_str+i.Account))
+			}
+		}
+	}
 }
 
 type InsertAccount struct {
@@ -95,10 +117,8 @@ type InsertAccount struct {
 }
 
 func (this *LoginDB) insert(i *InsertAccount) {
-	go func() {
-		err := this.Collection.Insert(i.AD)
-		i.CB(err)
-	}()
+	err := this.Collection.Insert(i.AD)
+	i.CB(err)
 }
 
 type UpdatePassword struct {
@@ -109,20 +129,6 @@ type UpdatePassword struct {
 }
 
 func (this *LoginDB) updatePassword(i *UpdatePassword) {
-	go func() {
-		err := this.Collection.Update(bson.M{"Account": i.Account}, bson.M{"$set": bson.M{"Password": i.Password}})
-		i.CB(err)
-	}()
+	err := this.Collection.Update(bson.M{"Account": i.Account}, bson.M{"$set": bson.M{"Password": i.Password}})
+	i.CB(err)
 }
-*/
-
-//
-/*func (this *LoginDB) MFind(account string) (*AccountData, error) {
-	result := &AccountData{}
-	err := this.Collection.Find(bson.M{"Account": account}).One(result)
-	return result, err
-}
-
-func (this *LoginDB) MInsert(ad *AccountData) error {
-	return this.Collection.Insert(ad)
-}*/

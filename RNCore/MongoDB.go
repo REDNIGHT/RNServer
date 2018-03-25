@@ -11,7 +11,7 @@ type MongoDB struct {
 	Collection *mgo.Collection
 }
 
-func NewMongoDB(name, url, db, c string, indexKeys ...string) MongoDB {
+func NewMongoDB(name, url, user, pass, db, c string, indexKeys ...string) MongoDB {
 	mdb := MongoDB{NewMinNode(name), nil, nil}
 
 	session, err := mgo.Dial(url)
@@ -21,7 +21,15 @@ func NewMongoDB(name, url, db, c string, indexKeys ...string) MongoDB {
 	session.SetMode(mgo.Monotonic, true)
 	mdb.Session = session
 
-	mdb.Collection = session.DB(db).C(c)
+	//
+	DB := session.DB(db)
+	err = DB.Login(user, pass)
+	if err != nil {
+		mdb.Panic(err.Error())
+	}
+
+	//
+	mdb.Collection = DB.C(c)
 	err = mdb.Collection.EnsureIndexKey(indexKeys...)
 	if err != nil {
 		mdb.Panic(err.Error())
@@ -31,6 +39,5 @@ func NewMongoDB(name, url, db, c string, indexKeys ...string) MongoDB {
 }
 
 func (this *MongoDB) Close() {
-	this.Close()
 	this.Session.Close()
 }
