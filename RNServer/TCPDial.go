@@ -25,36 +25,34 @@ func NewTCPDial(name string, ip string) *TCPDial {
 }
 
 func (this *TCPDial) Run() {
-	go func() {
-		for {
-			//
-			if this.conn == nil {
-				conn, err := net.Dial("tcp", this.ip)
+	for {
+		//
+		if this.conn == nil {
+			conn, err := net.Dial("tcp", this.ip)
 
-				if err != nil {
-					this.Error("err != nil  err=" + err.Error())
-					this.conn = nil
-				} else {
-					this.conn = conn
-					this.Log("A new Connection  RemoteAddr=" + conn.RemoteAddr().String())
-					this.Out(&Name_Conn{this.Name(), conn})
-				}
-			}
-
-			//todo...
-			//链接异常断开时 从新链接
-			var delta <-chan time.Time
-			if this.conn == nil {
-				delta = time.After(time.Second * 2)
+			if err != nil {
+				this.Error("err != nil  err=" + err.Error())
+				this.conn = nil
 			} else {
-				delta = time.After(time.Second * 30)
-			}
-
-			//
-			select {
-			case <-delta:
-				continue
+				this.conn = conn
+				this.Log("A new Connection  RemoteAddr=" + conn.RemoteAddr().String())
+				this.Out(&Name_Conn{this.Name(), conn})
 			}
 		}
-	}()
+
+		//todo...
+		//链接异常断开时 从新链接
+		var delta <-chan time.Time
+		if this.conn == nil {
+			delta = time.After(time.Second * 2)
+		} else {
+			delta = time.After(time.Second * 30)
+		}
+
+		//
+		select {
+		case <-delta:
+			continue
+		}
+	}
 }

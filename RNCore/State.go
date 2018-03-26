@@ -12,29 +12,19 @@ import (
 	"time"
 )
 
-var inNodeInfo chan *NodeInfo = nil
-
-func InNodeInfo() chan *NodeInfo {
-	return inNodeInfo
+type iState interface {
+	AddNodeInfo(*NodeInfo)
 }
 
-var inStateInfo chan *StateInfo = nil
+var _State iState
 
-/*func InStateInfo() chan *StateInfo {
-	return inStateInfo
+func AddNodeInfo(nodeInfo *NodeInfo) {
+	_State.AddNodeInfo(nodeInfo)
 }
-
-var inChanOverload chan *ChanOverload = nil
-
-func InChanOverload() chan *ChanOverload {
-	return inChanOverload
-}*/
 
 type State struct {
 	Node
 
-	stateTickerSpec string
-	saveMaxSpec     string
 	//每隔5秒执行一次："*/5 * * * * ?"
 	//每隔1分钟执行一次："0 */1 * * * ?"
 	//每天23点执行一次："0 0 23 * * ?"
@@ -44,9 +34,6 @@ type State struct {
 	//每天的0点、13点、18点、21点都执行一次："0 0 0,13,18,21 * * ?"
 
 	//
-	In      chan *StateInfo
-	InProxy chan []byte
-
 	stateInfos      []*StateInfo
 	stateInfosProxy []*StateInfo
 	stateInfoMap    map[string]*StateInfo
@@ -55,11 +42,7 @@ type State struct {
 	maxStateInfos []MaxStateInfo
 
 	//
-	InNodeInfo  chan *NodeInfo
 	nodeInfoMap map[string]*NodeInfo
-
-	//
-	InChanOverload chan *ChanOverload
 }
 
 type MaxStateInfo struct {
@@ -67,9 +50,8 @@ type MaxStateInfo struct {
 	Time  time.Time
 }
 
-type ChanOverload struct {
-	Name    string
-	ChanLen int
+type StateWarning struct {
+	Name, Warning string
 }
 
 type IState interface {
@@ -79,7 +61,7 @@ type IState interface {
 
 	GetStateInfo() *StateInfo
 
-	DebugChanState(chan *ChanOverload)
+	GetStateWarning(func(Name, Warning string))
 }
 
 type StateInfo struct {
@@ -107,118 +89,68 @@ func NewStateInfo(node IName, inTotal uint) *StateInfo {
 }
 
 func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
-	state := &State{NewNode(name),
-		stateTickerSpec,
-		saveMaxSpec,
-		make(chan *StateInfo, InChanLen),
-		make(chan []byte, InChanLen),
+	this := &State{NewNode(name),
 
 		make([]*StateInfo, 0),
 		make([]*StateInfo, 0),
 		make(map[string]*StateInfo),
 		nil,
 
-		make(chan *NodeInfo, InChanLen),
-		make(map[string]*NodeInfo),
+		make(map[string]*NodeInfo)}
 
-		make(chan *ChanOverload, InChanLen)}
-
-	/*if inStateInfo != nil {
-		panic("inStateInfo != nil")
+	if _State != nil {
+		this.Panic("_State != nil")
 	}
-	inStateInfo = state.In*/
+	_State = this
 
-	if inNodeInfo != nil {
-		panic("inNodeInfo != nil")
-	}
-	inNodeInfo = state.InNodeInfo
-
-	/*if inChanOverload != nil {
-		panic("inChanOverload != nil")
-	}
-	inChanOverload = state.InChanOverload*/
-
-	return state
-}
-
-func (this *State) Run() {
-
+	//
+	//
 	c := cron.New()
 	c.Start()
 
 	//
-	stateTicker := make(chan bool)
-	if len(this.stateTickerSpec) <= 0 {
-		this.stateTickerSpec = "0 */1 * * * ?" //每分钟执行一次
+	if len(stateTickerSpec) <= 0 {
+		stateTickerSpec = "0 */1 * * * ?" //每分钟执行一次
 	}
-	c.AddFunc(this.stateTickerSpec, func() { stateTicker <- true })
+	c.AddFunc(stateTickerSpec, func() { this.SendCall() <- func(_ IMessage) { this.stateTicker() } })
 
 	//
-	saveMax := make(chan bool)
-	if len(this.saveMaxSpec) <= 0 {
-		this.saveMaxSpec = "0 0 6 * * ?" //每天6点执行一次
+	if len(saveMaxSpec) <= 0 {
+		saveMaxSpec = "0 0 6 * * ?" //每天6点执行一次
 	}
-	c.AddFunc(this.saveMaxSpec, func() { saveMax <- true })
+	c.AddFunc(saveMaxSpec, func() { this.SendCall() <- func(_ IMessage) { this.saveMax() } })
 
 	//
-	debugChanStateTicker := make(chan bool)
 	if RNCDebug {
-		c.AddFunc(RNCDebugStateTickerSpec, func() { debugChanStateTicker <- true }) //每10s执行一次
+		c.AddFunc(RNCStateWarningTickerSpec, func() { this.stateWarning() }) //每10s执行一次
 	}
 
-	//
-	save := make(chan bool)
+	return this
+}
 
-	//
-	for {
-		this.InTotal++
-
-		//
-		select {
-		case <-stateTicker:
-			this.stateTicker(save)
-		case <-save:
-			this.save()
-
-		case <-saveMax:
-			this.saveMax()
-
-		case <-debugChanStateTicker:
-			Root().ForEach(func(node IName) {
-				if is, b := node.(IState); b == true {
-					is.DebugChanState(this.InChanOverload)
-				}
-			})
-
-		//
-		case stateInfo := <-this.In:
-
-			this.stateInfos = append(this.stateInfos, stateInfo)
-			this.stateInfoMap[stateInfo.key()] = stateInfo
-
-		case nodeInfo := <-this.InNodeInfo:
-			if _, b := this.nodeInfoMap[nodeInfo.Name]; b == true {
-				this.Error("b := this.nodeInfoMap[nodeInfo.Name]; b == true  nodeInfo.Name=%v", nodeInfo.Name)
-			}
-			this.nodeInfoMap[nodeInfo.Name] = nodeInfo
-
-		case chanOverload := <-this.InChanOverload:
-			this.saveChanOverload(chanOverload)
-
-			//
-		case buffer := <-this.InProxy:
-			this.OnInProxy(buffer)
-
-			//
-		case f := <-this.inMessage:
-			if this.OnMessage(f) == true {
-				return
-			}
+func (this *State) AddNodeInfo(nodeInfo *NodeInfo) {
+	this.SendCall() <- func(IMessage) {
+		if _, b := this.nodeInfoMap[nodeInfo.Name]; b == true {
+			this.Error("b := this.nodeInfoMap[nodeInfo.Name]; b == true  nodeInfo.Name=%v", nodeInfo.Name)
 		}
+		this.nodeInfoMap[nodeInfo.Name] = nodeInfo
 	}
 }
 
-func (this *State) stateTicker(saveChan chan bool) {
+func (this *State) stateWarning() {
+	Root().ForEach(func(node IName) {
+		if is, b := node.(IState); b == true {
+			is.GetStateWarning(this.inStateWarning)
+		}
+	})
+}
+func (this *State) inStateWarning(name, warning string) {
+	this.SendCall() <- func(IMessage) {
+		this.saveStateWarning(name, warning)
+	}
+}
+
+func (this *State) stateTicker() {
 	this.stateInfos = make([]*StateInfo, 0)
 
 	//
@@ -229,21 +161,31 @@ func (this *State) stateTicker(saveChan chan bool) {
 	this.stateInfosProxy = make([]*StateInfo, 0)
 
 	//
-	go sendMessageStateInfo(this.In, saveChan)
-}
-func sendMessageStateInfo(In chan *StateInfo, saveChan chan bool) {
-	Root().BroadcastMessage(func(node IMessage) {
-		if is, b := node.(IState); b == true {
-			In <- is.GetStateInfo()
-		}
-	})
+	go func() {
+		Root().BroadcastMessage(func(node IMessage) {
+			if is, b := node.(IState); b == true {
+				this.inStateInfo(is.GetStateInfo())
+			}
+		})
 
-	if saveChan != nil {
-		saveChan <- true
+		this.SendCall() <- func(IMessage) {
+			this.save()
+		}
+	}()
+}
+func (this *State) inStateInfo(stateInfo *StateInfo) {
+	this.SendCall() <- func(IMessage) {
+		this.stateInfos = append(this.stateInfos, stateInfo)
+		this.stateInfoMap[stateInfo.key()] = stateInfo
 	}
 }
 
-func (this *State) OnInProxy(buffer []byte) {
+func (this *State) InProxy(buffer []byte) {
+	this.SendCall() <- func(IMessage) {
+		this.inProxy(buffer)
+	}
+}
+func (this *State) inProxy(buffer []byte) {
 	j := &proxyDataJ{}
 	json.Unmarshal(buffer, j)
 
@@ -259,21 +201,21 @@ func (this *State) OnInProxy(buffer []byte) {
 	if j.NodeInfo != nil {
 		this.nodeInfoMap[j.NodeInfo.Name] = j.NodeInfo
 	}
-	if j.ChanOverload != nil {
-		this.saveChanOverload(j.ChanOverload)
+	if j.StateWarning != nil {
+		this.saveStateWarning(j.StateWarning.Name, j.StateWarning.Warning)
 	}
 }
 
 //
-func chanOverloadFileName() string {
+func stateWarningFileName() string {
 	Time := time.Now()
-	return fmt.Sprintf("%v\\%v-%v.%v.%v.chanOverload.csv", baseStatesPath(), Root().Name(), Time.Year(), Time.Month(), Time.Day())
+	return fmt.Sprintf("%v\\%v-%v.%v.%v.stateWarning.csv", baseStatesPath(), Root().Name(), Time.Year(), Time.Month(), Time.Day())
 }
-func (this *State) saveChanOverload(chanOverload *ChanOverload) {
+func (this *State) saveStateWarning(name, warning string) {
 
-	row := fmt.Sprintf("%v	%v	%v\n", time.Now(), chanOverload.Name, chanOverload.ChanLen)
+	row := fmt.Sprintf("%v	%v	%v\n", time.Now(), name, warning)
 
-	ioutil.WriteFile(chanOverloadFileName(), []byte(row), os.ModeAppend)
+	ioutil.WriteFile(stateWarningFileName(), []byte(row), os.ModeAppend)
 }
 
 //
@@ -450,21 +392,11 @@ func getRowBuffer(row []string) string {
 	return buffer
 }
 
-//
-func (this *State) DebugChanState(chanOverload chan *ChanOverload) {
-	this.TestChanOverload(chanOverload, "In", len(this.In))
-	this.TestChanOverload(chanOverload, "InProxy", len(this.InProxy))
-	this.TestChanOverload(chanOverload, "InNodeInfo", len(this.InNodeInfo))
-	this.TestChanOverload(chanOverload, "InChanOverload", len(this.InChanOverload))
-}
-
 //----------------------------------------------------------------------------------------------------------------
 
 type StateProxy struct {
 	Node
 
-	stateTickerSpec string
-	saveMaxSpec     string
 	//每隔5秒执行一次："*/5 * * * * ?"
 	//每隔1分钟执行一次："0 */1 * * * ?"
 	//每天23点执行一次："0 0 23 * * ?"
@@ -473,11 +405,11 @@ type StateProxy struct {
 	//在26分、29分、33分执行一次："0 26,29,33 * * * ?"
 	//每天的0点、13点、18点、21点都执行一次："0 0 0,13,18,21 * * ?"
 
-	In chan *StateInfo
+	//In chan *StateInfo
 
-	InNodeInfo chan *NodeInfo
+	//InNodeInfo chan *NodeInfo
 
-	InChanOverload chan *ChanOverload
+	//InStateWarning chan *StateWarning
 
 	Out func([]byte)
 }
@@ -485,105 +417,79 @@ type StateProxy struct {
 type proxyDataJ struct {
 	StateInfo    *StateInfo
 	NodeInfo     *NodeInfo
-	ChanOverload *ChanOverload
+	StateWarning *StateWarning
 }
 
 func NewStateProxy(name, stateTickerSpec, saveMaxSpec string) *StateProxy {
-	state := &StateProxy{NewNode(name), stateTickerSpec, saveMaxSpec, make(chan *StateInfo, InChanLen), make(chan *NodeInfo, InChanLen), make(chan *ChanOverload, InChanLen), nil}
+	this := &StateProxy{NewNode(name), nil}
 
-	/*if inStateInfo != nil {
-		panic("inStateInfo != nil")
+	if _State != nil {
+		this.Panic("_State != nil")
 	}
-	inStateInfo = state.In*/
-
-	if inNodeInfo != nil {
-		panic("inNodeInfo != nil")
-	}
-	inNodeInfo = state.InNodeInfo
-
-	/*if inChanOverload != nil {
-		panic("inChanOverload != nil")
-	}
-	inChanOverload = state.InChanOverload*/
-	return state
-}
-
-func (this *StateProxy) Run() {
+	_State = this
 
 	//
 	c := cron.New()
 	c.Start()
 
 	//
-	stateTicker := make(chan bool)
-	if len(this.stateTickerSpec) <= 0 {
-		this.stateTickerSpec = "0 */1 * * * ?" //每分钟执行一次
+	if len(stateTickerSpec) <= 0 {
+		stateTickerSpec = "0 */1 * * * ?" //每分钟执行一次
 	}
-	c.AddFunc(this.stateTickerSpec, func() { stateTicker <- true })
-
-	debugChanStateTicker := make(chan bool)
-	if RNCDebug {
-		c.AddFunc(RNCDebugStateTickerSpec, func() { debugChanStateTicker <- true })
-	}
+	c.AddFunc(stateTickerSpec, this.stateTicker)
 
 	//
-	var inTotal uint = 0
-	for {
-		inTotal++
+	if RNCDebug {
+		c.AddFunc(RNCStateWarningTickerSpec, func() { this.stateWarning() })
+	}
 
-		//
-		select {
+	return this
+}
 
-		case <-stateTicker:
-			go sendMessageStateInfo(this.In, nil)
+func (this *StateProxy) AddNodeInfo(nodeInfo *NodeInfo) {
+	buffer, err := json.Marshal(&proxyDataJ{nil, nodeInfo, nil})
+	if err == nil {
+		this.Out(buffer)
+	} else {
+		this.Error("json.Marshal(nodeInfo)  err=%v", err)
+	}
+}
 
-		case <-debugChanStateTicker:
-			Root().ForEach(func(node IName) {
-				if is, b := node.(IState); b == true {
-					is.DebugChanState(this.InChanOverload)
-				}
-			})
+func (this *StateProxy) stateWarning() {
+	Root().ForEach(func(node IName) {
+		if is, b := node.(IState); b == true {
+			is.GetStateWarning(this.inStateWarning)
+		}
+	})
+}
 
-			//
-		case stateInfo := <-this.In:
-
-			buffer, err := json.Marshal(&proxyDataJ{stateInfo, nil, nil})
-			if err == nil {
-				this.Out(buffer)
-			} else {
-				this.Error("json.Marshal(stateInfo)  err=%v", err)
-			}
-
-			//
-		case nodeInfo := <-this.InNodeInfo:
-			buffer, err := json.Marshal(&proxyDataJ{nil, nodeInfo, nil})
-			if err == nil {
-				this.Out(buffer)
-			} else {
-				this.Error("json.Marshal(nodeInfo)  err=%v", err)
-			}
-
-			//
-		case chanOverload := <-this.InChanOverload:
-
-			buffer, err := json.Marshal(&proxyDataJ{nil, nil, chanOverload})
-			if err == nil {
-				this.Out(buffer)
-			} else {
-				this.Error("json.Marshal(nodeInfo)  err=%v", err)
-			}
-
-			//
-		case f := <-this.inMessage:
-			if this.OnMessage(f) == true {
-				return
-			}
+func (this *StateProxy) inStateWarning(name, warning string) {
+	this.SendCall() <- func(IMessage) {
+		buffer, err := json.Marshal(&proxyDataJ{nil, nil, &StateWarning{name, warning}})
+		if err == nil {
+			this.Out(buffer)
+		} else {
+			this.Error("json.Marshal(nodeInfo)  err=%v", err)
 		}
 	}
 }
 
-func (this *StateProxy) DebugChanState(chanOverload chan *ChanOverload) {
-	this.TestChanOverload(chanOverload, "In", len(this.In))
-	this.TestChanOverload(chanOverload, "InNodeInfo", len(this.InNodeInfo))
-	this.TestChanOverload(chanOverload, "InChanOverload", len(this.InChanOverload))
+func (this *StateProxy) stateTicker() {
+	this.SendCall() <- func(IMessage) {
+		Root().BroadcastMessage(func(node IMessage) {
+			if is, b := node.(IState); b == true {
+				this.inStateInfo(is.GetStateInfo())
+			}
+		})
+	}
+}
+func (this *StateProxy) inStateInfo(stateInfo *StateInfo) {
+	this.SendCall() <- func(IMessage) {
+		buffer, err := json.Marshal(&proxyDataJ{stateInfo, nil, nil})
+		if err == nil {
+			this.Out(buffer)
+		} else {
+			this.Error("json.Marshal(stateInfo)  err=%v", err)
+		}
+	}
 }

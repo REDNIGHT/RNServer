@@ -57,6 +57,17 @@ func (this *root) ForEach(f func(IName)) {
 		f(this.ns[i])
 	}
 }
+func (this *root) Broadcast(f func(IMessage)) {
+	this.SendCall() <- f
+
+	for i := 0; i < len(this.ns); i++ {
+		im, b := this.ns[i].(IMessage)
+		if b == true {
+			im.SendCall() <- f
+		}
+	}
+}
+
 func (this *root) BroadcastMessage(f func(IMessage)) {
 	this.SendMessage(f)
 
@@ -86,18 +97,11 @@ func (this *root) Run() {
 		sig := <-c
 		this.Log("closing down (signal: %v)", sig)
 
-		this.Node.Close() //这行代码可以退出下面的for循环
+		this.Node.Close() //这行代码可以退出下面的this.Node.Run()
 	}()
 
 	//
-	for {
-		select {
-		case f := <-this.inMessage:
-			if this.OnMessage(f) == true {
-				return
-			}
-		}
-	}
+	this.Node.Run()
 }
 
 func (this *root) Close() {

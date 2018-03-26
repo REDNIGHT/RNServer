@@ -32,7 +32,7 @@ func (this *MinNode) SetOutNodeInfos(node_chan_Names ...string) {
 		}
 	}*/
 
-	InNodeInfo() <- nodeInfos
+	AddNodeInfo(nodeInfos)
 }
 
 //

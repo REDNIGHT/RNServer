@@ -7,31 +7,22 @@ import (
 )
 
 type RPC struct {
-	RNCore.MinNode
-
-	In chan *Gate2RPCContent
+	RNCore.CallNode
 
 	out reflect.Value
 }
 
-func NewRPC(name string) *RPC {
-	return &RPC{RNCore.NewMinNode(name), make(chan *Gate2RPCContent, RNCore.InChanLen), reflect.Value{}}
+func NewRPC() *RPC {
+	return &RPC{RNCore.NewCallNode(), reflect.Value{}}
 }
 
+func (this *RPC) In(content *Gate2RPCContent) {
+	this.InCall() <- func() {
+		this.onRPC(content)
+	}
+}
 func (this *RPC) Out(out interface{}) {
 	this.out = reflect.ValueOf(out).Elem()
-}
-
-func (this *RPC) Run() {
-	go func() {
-		for {
-			select {
-			case content := <-this.In:
-				this.onRPC(content)
-				continue
-			}
-		}
-	}()
 }
 
 type FuncContent struct {

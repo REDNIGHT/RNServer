@@ -6,11 +6,9 @@ import (
 )
 
 type Router2Socket struct {
-	RNCore.MinNode
+	RNCore.CallNode
 
-	In chan *Router
-
-	Out func(*SocketBufferByName)
+	Out func(s string, buffer []byte)
 }
 
 type RouterData struct {
@@ -18,24 +16,18 @@ type RouterData struct {
 	Json     []byte
 }
 
-func NewRouter2Socket(name string) *Router2Socket {
-	return &Router2Socket{RNCore.NewMinNode(name), make(chan *Router, RNCore.InChanMinLen), nil}
+func NewRouter2Socket() *Router2Socket {
+	return &Router2Socket{RNCore.NewCallNode(), nil}
 }
 
-func (this *Router2Socket) Run() {
-	go func() {
-		for {
-
-			select {
-			case router := <-this.In:
-				buffer, err := json.Marshal(&RouterData{router.SocketID, router.JosnData.NJ})
-				if err != nil {
-					this.Error("err != nil  err=" + err.Error())
-					continue
-				}
-
-				this.Out(&SocketBufferByName{router.JosnData.S, buffer})
-			}
+func (this *Router2Socket) In(socketID uintptr, josnData *JosnData) {
+	this.InCall() <- func() {
+		buffer, err := json.Marshal(&RouterData{socketID, josnData.NJ})
+		if err != nil {
+			this.Error("err != nil  err=" + err.Error())
+			return
 		}
-	}()
+
+		this.Out(josnData.S, buffer)
+	}
 }

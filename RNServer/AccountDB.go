@@ -11,9 +11,7 @@ import (
 type AccountDB struct {
 	RNCore.MongoDB
 
-	InFind           chan *FindAccount
-	InInsert         chan *InsertAccount
-	InUpdatePassword chan *UpdatePassword
+	inFind chan *FindAccount
 }
 
 type AccountData struct {
@@ -25,7 +23,7 @@ type AccountData struct {
 }
 
 func NewAccountDB(name, url, user, pass, db, c string) *AccountDB {
-	return &AccountDB{RNCore.NewMongoDB(name, url, user, pass, db, c), make(chan *FindAccount, RNCore.InChanLen), make(chan *InsertAccount, RNCore.InChanLen), make(chan *UpdatePassword, RNCore.InChanLen)}
+	return &AccountDB{RNCore.NewMongoDB(name, url, user, pass, db, c), make(chan *FindAccount, RNCore.InChanLen)}
 }
 
 /*
@@ -40,28 +38,27 @@ func (this *ex)example() {
 			_ = ad.Account
 		})
 	}
-	ldb.InFind <- &FindAccount{"acc", cb}
+	ldb.inFind <- &FindAccount{"acc", cb}
 }
 */
 
 func (this *AccountDB) Run() {
 	for {
 		select {
-		case i := <-this.InFind:
-			is := make([]*FindAccount, len(this.InFind)+1)
+		case i := <-this.inFind:
+			is := make([]*FindAccount, len(this.inFind)+1)
 			is[0] = i
 			index := 1
-			for i = range this.InFind {
+			for i = range this.inFind {
 				is[index] = i
 				index++
 			}
 			this.find(is...)
-		case i := <-this.InInsert:
-			this.insert(i)
-		case i := <-this.InUpdatePassword:
-			this.updatePassword(i)
 
 			//
+		case f := <-this.InCall():
+			f(this)
+
 		case f := <-this.InMessage():
 			if this.OnMessage(f) == true {
 				return
@@ -75,6 +72,9 @@ type FindAccount struct {
 	CB      func(*AccountData, error)
 }
 
+func (this *AccountDB) Find(Account string, CB func(*AccountData, error)) {
+	this.inFind <- &FindAccount{Account, CB}
+}
 func (this *AccountDB) find(is ...*FindAccount) {
 	//todo...
 	//测试是否返回一样个数的结果 会出现某项数据不存在而返回少量一个的情况
@@ -123,7 +123,7 @@ type InsertAccount struct {
 	CB func(error)
 }
 
-func (this *AccountDB) insert(i *InsertAccount) {
+func (this *AccountDB) Insert(i *InsertAccount) {
 	err := this.Collection.Insert(i.AD)
 	i.CB(err)
 }
@@ -135,15 +135,14 @@ type UpdatePassword struct {
 	CB       func(error)
 }
 
-func (this *AccountDB) updatePassword(i *UpdatePassword) {
+func (this *AccountDB) UpdatePassword(i *UpdatePassword) {
 	err := this.Collection.Update(bson.M{"Account": i.Account}, bson.M{"$set": bson.M{"Password": i.Password}})
 	i.CB(err)
 }
 
-func (this *AccountDB) DebugChanState(chanOverload chan *RNCore.ChanOverload) {
-	this.TestChanOverload(chanOverload, "InFind", len(this.InFind))
-	this.TestChanOverload(chanOverload, "InInsert", len(this.InInsert))
-	this.TestChanOverload(chanOverload, "InUpdatePassword", len(this.InUpdatePassword))
+//
+func (this *AccountDB) GetStateWarning(stateWarning func(name, warning string)) {
+	this.TestChanOverload(stateWarning, "inFind", len(this.inFind))
 
-	this.MongoDB.Node.DebugChanState(chanOverload)
+	this.MongoDB.Node.GetStateWarning(stateWarning)
 }

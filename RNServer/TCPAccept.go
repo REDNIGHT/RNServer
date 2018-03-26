@@ -45,7 +45,7 @@ func (this *TCPAccept) Run() {
 	}
 }
 
-/*func (this *TCPAccept) Close() {
+func (this *TCPAccept) Close() {
 	this.listener.Close()
 	this.listener = nil
-}*/
+}

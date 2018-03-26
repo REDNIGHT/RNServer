@@ -1,51 +1,16 @@
 package RNCore
 
 import (
-//"time"
+//"fmt"
 )
 
 //
 type Node struct {
 	MinNode
 	MessageNode
-
-	InTotal uint
 }
 
-func NewNode(name string) Node { return Node{NewMinNode(name), NewMessageNode(), 0} }
+func NewNode(name string) Node { return Node{NewMinNode(name), NewMessageNode()} }
 
 func (this *Node) Name() string      { return this.MinNode.Name() }
 func (this *Node) Type_Name() string { return this.MinNode.Type_Name() }
-
-func (this *Node) Run() {
-	this.Panic("//todo... Run")
-
-	for {
-		this.InTotal++
-
-		//
-		select {
-
-		case f := <-this.InMessage():
-			if this.OnMessage(f) == true {
-				return
-			}
-		}
-	}
-}
-
-//IState
-func (this *Node) GetStateInfo() *StateInfo {
-	inTotal := this.InTotal
-	this.InTotal = 0
-	return NewStateInfo(this, inTotal)
-}
-
-func (this *Node) DebugChanState(chanOverload chan *ChanOverload) {
-	this.TestChanOverload(chanOverload, "inMessage", len(this.inMessage))
-}
-func (this *Node) TestChanOverload(chanOverload chan *ChanOverload, chanName string, chanLen int) {
-	if chanLen > ChanOverloadLen {
-		chanOverload <- &ChanOverload{this.Type_Name() + "." + chanName, chanLen}
-	}
-}

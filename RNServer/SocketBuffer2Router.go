@@ -9,9 +9,7 @@ import (
 )
 
 type SocketBuffer2Router struct {
-	RNCore.MinNode
-
-	In chan *SocketBuffer
+	RNCore.CallNode
 
 	out func(*Router)
 }
@@ -28,28 +26,23 @@ type JosnData struct {
 }
 
 //
-func NewSocketBuffer2Router(name string) *SocketBuffer2Router {
-	return &SocketBuffer2Router{RNCore.NewMinNode(name), make(chan *SocketBuffer, RNCore.InChanMinLen), nil}
+func NewSocketBuffer2Router() *SocketBuffer2Router {
+	return &SocketBuffer2Router{RNCore.NewCallNode(), nil}
+}
+
+func (this *SocketBuffer2Router) In(socketBuffer *SocketBuffer) {
+	this.InCall() <- func() {
+		josnData := &JosnData{}
+		err := json.Unmarshal(socketBuffer.Buffer, josnData)
+		if err != nil {
+			this.Error("err != nil  err=" + err.Error())
+			return
+		}
+
+		this.out(&Router{socketBuffer.SocketId, josnData})
+	}
 }
 
 func (this *SocketBuffer2Router) Out(out func(*Router)) {
 	this.out = out
-}
-
-func (this *SocketBuffer2Router) Run() {
-	go func() {
-		for {
-			select {
-			case socketBuffer := <-this.In:
-				josnData := &JosnData{}
-				err := json.Unmarshal(socketBuffer.Buffer, josnData)
-				if err != nil {
-					this.Error("err != nil  err=" + err.Error())
-					continue
-				}
-
-				this.out(&Router{socketBuffer.SocketID, josnData})
-			}
-		}
-	}()
 }

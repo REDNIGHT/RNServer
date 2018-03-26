@@ -6,32 +6,25 @@ import (
 )
 
 type GateSockerBuffer2RPC struct {
-	In chan *SocketBuffer
+	RNCore.CallNode
 
 	Out func(*Gate2RPCContent)
 }
 
 type Gate2RPCContent struct {
-	GateSocketID uintptr
-	SocketID     uintptr
+	GateSocketId uintptr
+	SocketId     uintptr
 	Json         []byte
 }
 
-func NewGate2RPC() *GateSockerBuffer2RPC {
-	return &GateSockerBuffer2RPC{make(chan *SocketBuffer, RNCore.InChanMinLen), nil}
+func NewGateSockerBuffer2RPC() *GateSockerBuffer2RPC {
+	return &GateSockerBuffer2RPC{RNCore.NewCallNode(), nil}
 }
 
-func (this *GateSockerBuffer2RPC) Go() {
-	go func() {
-		for {
-			//
-			select {
-			case socketBuffer := <-this.In:
-				routerData := &RouterData{}
-				json.Unmarshal(socketBuffer.Buffer, routerData)
-				this.Out(&Gate2RPCContent{routerData.SocketID, socketBuffer.SocketID, routerData.Json})
-				continue
-			}
-		}
-	}()
+func (this *GateSockerBuffer2RPC) In(socketId uintptr, buffer []byte) {
+	this.InCall() <- func() {
+		routerData := &RouterData{}
+		json.Unmarshal(buffer, routerData)
+		this.Out(&Gate2RPCContent{routerData.SocketID, socketId, routerData.Json})
+	}
 }
