@@ -39,12 +39,19 @@ func (this *MessageNode) Run() {
 	for {
 		//
 		select {
-		case f := <-this.inMessage:
+		case f := <-this.InMessage():
 			if this.OnMessage(f) == true {
 				return
 			}
 		}
 	}
+}
+
+//
+func (this *Node) Close() {
+	this.inMessage <- nil
+	<-this.inMessage
+	close(this.inMessage)
 }
 
 //

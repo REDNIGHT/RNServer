@@ -1,40 +1,28 @@
 package RNCore
 
 import (
-	"github.com/go-redis/redis"
+	"github.com/gomodule/redigo/redis"
 )
 
 type RedisDB struct {
-	MinNode
-
-	Client *redis.Client
+	Node
+	Conn redis.Conn
 }
 
-func NewRedisDB(name, url, password, db, c string, indexKeys ...string) RedisDB {
-	rdb := RedisDB{NewMinNode(name), nil}
+func NewRedisDB(name, url, password string, db int) RedisDB {
+	rdb := RedisDB{Node: NewNode(name)}
 
-	rdb.Client = redis.NewClient(&redis.Options{
-		Addr:     url,
-		Password: password, // no password set
-		DB:       0,        // use default DB
-	})
-
-	_, err := rdb.Client.Ping().Result()
+	conn, err := redis.Dial("tcp", url, redis.DialPassword(password), redis.DialDatabase(db))
 	if err != nil {
-		rdb.Error(err.Error())
+		rdb.Panic(err.Error())
 	}
-	/*rdb.Client.Pipelined(func(pipe redis.Pipeliner) error {
-		_ := pipe.Ping()
+	rdb.Conn = conn
 
-		return nil
-	})*/
-	/*_, err := rdb.Client.Get("key").Result()
-	if err != nil {
-		panic(err)
-	}*/
 	return rdb
 }
 
 func (this *RedisDB) Close() {
-	this.Client.Close()
+	this.Node.Close()
+
+	this.Conn.Close()
 }

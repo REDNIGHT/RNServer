@@ -17,7 +17,6 @@ func NewNode(name string) Node { return Node{NewMinNode(name), NewMessageNode(),
 func (this *Node) Name() string      { return this.MinNode.Name() }
 func (this *Node) Type_Name() string { return this.MinNode.Type_Name() }
 
-//INode
 func (this *Node) Run() {
 	this.Panic("//todo... Run")
 
@@ -27,19 +26,12 @@ func (this *Node) Run() {
 		//
 		select {
 
-		case f := <-this.inMessage:
+		case f := <-this.InMessage():
 			if this.OnMessage(f) == true {
 				return
 			}
 		}
 	}
-}
-
-//
-func (this *Node) Close() {
-	this.inMessage <- nil
-	<-this.inMessage
-	close(this.inMessage)
 }
 
 //IState

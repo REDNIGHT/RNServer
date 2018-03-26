@@ -8,7 +8,7 @@ import (
 	//"gopkg.in/mgo.v2"
 )
 
-type LoginDB struct {
+type AccountDB struct {
 	RNCore.MongoDB
 
 	InFind           chan *FindAccount
@@ -17,19 +17,20 @@ type LoginDB struct {
 }
 
 type AccountData struct {
-	ID       string
-	Account  string
-	Password string
-	Type     string
+	ID          string
+	LoginType   string //手机 邮箱 设备id...
+	Account     string
+	Password    string
+	AccountType string //普通用户 GM用户...
 }
 
-func NewLoginDB(name, url, db, c string) *LoginDB {
-	return &LoginDB{RNCore.NewMongoDB(name, url, db, c), make(chan *FindAccount, RNCore.InChanLen), make(chan *InsertAccount, RNCore.InChanLen), make(chan *UpdatePassword, RNCore.InChanLen)}
+func NewAccountDB(name, url, user, pass, db, c string) *AccountDB {
+	return &AccountDB{RNCore.NewMongoDB(name, url, user, pass, db, c), make(chan *FindAccount, RNCore.InChanLen), make(chan *InsertAccount, RNCore.InChanLen), make(chan *UpdatePassword, RNCore.InChanLen)}
 }
 
 /*
-func example() {
-	ldb := NewLoginDB("", "", "", "")
+func (this *ex)example() {
+	ldb := NewAccountDB("", "", "", "")
 
 	cb := func(ad *AccountData, err error) {
 		if err != nil {
@@ -43,7 +44,7 @@ func example() {
 }
 */
 
-func (this *LoginDB) Run() {
+func (this *AccountDB) Run() {
 	for {
 		select {
 		case i := <-this.InFind:
@@ -59,6 +60,12 @@ func (this *LoginDB) Run() {
 			this.insert(i)
 		case i := <-this.InUpdatePassword:
 			this.updatePassword(i)
+
+			//
+		case f := <-this.InMessage():
+			if this.OnMessage(f) == true {
+				return
+			}
 		}
 	}
 }
@@ -68,7 +75,7 @@ type FindAccount struct {
 	CB      func(*AccountData, error)
 }
 
-func (this *LoginDB) find(is ...*FindAccount) {
+func (this *AccountDB) find(is ...*FindAccount) {
 	//todo...
 	//测试是否返回一样个数的结果 会出现某项数据不存在而返回少量一个的情况
 
@@ -76,7 +83,7 @@ func (this *LoginDB) find(is ...*FindAccount) {
 	for index, i := range is {
 		arr[index] = bson.M{"Account": i.Account}
 	}
-	query := bson.M{"$and": arr}
+	query := bson.M{"$or": arr}
 
 	iter := this.Collection.Find(query).Iter()
 	defer iter.Close()
@@ -116,7 +123,7 @@ type InsertAccount struct {
 	CB func(error)
 }
 
-func (this *LoginDB) insert(i *InsertAccount) {
+func (this *AccountDB) insert(i *InsertAccount) {
 	err := this.Collection.Insert(i.AD)
 	i.CB(err)
 }
@@ -128,7 +135,15 @@ type UpdatePassword struct {
 	CB       func(error)
 }
 
-func (this *LoginDB) updatePassword(i *UpdatePassword) {
+func (this *AccountDB) updatePassword(i *UpdatePassword) {
 	err := this.Collection.Update(bson.M{"Account": i.Account}, bson.M{"$set": bson.M{"Password": i.Password}})
 	i.CB(err)
+}
+
+func (this *AccountDB) DebugChanState(chanOverload chan *RNCore.ChanOverload) {
+	this.TestChanOverload(chanOverload, "InFind", len(this.InFind))
+	this.TestChanOverload(chanOverload, "InInsert", len(this.InInsert))
+	this.TestChanOverload(chanOverload, "InUpdatePassword", len(this.InUpdatePassword))
+
+	this.MongoDB.Node.DebugChanState(chanOverload)
 }
