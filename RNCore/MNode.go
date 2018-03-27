@@ -12,7 +12,7 @@ type MNode struct {
 	inCall    chan func(IMessage)
 	inMessage chan func(IMessage)
 
-	inTotal uint
+	InTotal uint
 }
 
 func NewMNode(name string) MNode {
@@ -33,7 +33,7 @@ func (this *MNode) SendMessage(f func(IMessage)) {
 }
 func (this *MNode) Run() {
 	for {
-		this.inTotal++
+		this.InTotal++
 
 		//
 		select {
@@ -55,7 +55,6 @@ func (this *MNode) OnMessage(f func(IMessage)) (close bool) {
 		return false
 
 	} else {
-
 		this.inMessage <- nil
 
 		//CloseSig
@@ -71,14 +70,14 @@ func (this *MNode) Close() {
 
 //IState
 func (this *MNode) GetStateInfo() *StateInfo {
-	inTotal := this.inTotal
-	this.inTotal = 0
-	return NewStateInfo(this, inTotal)
+	InTotal := this.InTotal
+	this.InTotal = 0
+	return NewStateInfo(this, InTotal)
 }
 
 func (this *MNode) GetStateWarning(stateWarning func(name, warning string)) {
 	this.TestChanOverload(stateWarning, "inCall", len(this.inCall))
-	this.TestChanOverload(stateWarning, "inMessage", len(this.inMessage))
+	//this.TestChanOverload(stateWarning, "inMessage", len(this.inMessage))
 }
 func (this *MNode) TestChanOverload(stateWarning func(name, warning string), chanName string, chanLen int) {
 	if chanLen > ChanOverloadLen {

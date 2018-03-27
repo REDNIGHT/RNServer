@@ -80,6 +80,7 @@ func (this *root) BroadcastMessage(f func(IMessage)) {
 }
 
 func (this *root) Run() {
+	//
 	for i := 0; i < len(this.ns); i++ {
 
 		n, b := this.ns[i].(IRun)
@@ -90,6 +91,8 @@ func (this *root) Run() {
 	}
 
 	//
+	this.MNode.Run()
+
 	go func() {
 		// close
 		c := make(chan os.Signal, 1)
@@ -97,11 +100,8 @@ func (this *root) Run() {
 		sig := <-c
 		this.Log("closing down (signal: %v)", sig)
 
-		this.MNode.Close() //这行代码可以退出下面的this.MNode.Run()
+		this.MNode.Close() //这行代码可以退出上面的this.MNode.Run()
 	}()
-
-	//
-	this.MNode.Run()
 }
 
 func (this *root) Close() {

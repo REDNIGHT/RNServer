@@ -44,6 +44,9 @@ func (this *ex)example() {
 
 func (this *AccountDB) Run() {
 	for {
+		this.InTotal++
+
+		//
 		select {
 		case i := <-this.inFind:
 			is := make([]*FindAccount, len(this.inFind)+1)

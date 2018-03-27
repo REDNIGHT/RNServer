@@ -22,7 +22,7 @@ type TCPSockets struct {
 	sockets       map[uintptr]*Socket
 	socketsByName map[string]*Socket
 
-	outSocketsBuffer func(*SocketBuffer)
+	Out func(*SocketBuffer)
 }
 
 type Socket struct {
@@ -40,10 +40,6 @@ func NewTCPSockets(name string, maxSocketCount int) *TCPSockets {
 		socketsByName:  make(map[string]*Socket)}
 }
 
-func (this *TCPSockets) Out(outSocketsBuffer func(*SocketBuffer)) {
-	this.outSocketsBuffer = outSocketsBuffer
-}
-
 func (this *TCPSockets) AddSocket(conn net.Conn, name string) {
 	this.InCall() <- func(_ RNCore.IMessage) {
 
@@ -53,7 +49,7 @@ func (this *TCPSockets) AddSocket(conn net.Conn, name string) {
 		}
 
 		//
-		socket := &Socket{name, conn, this.outSocketsBuffer, make(chan []byte)}
+		socket := &Socket{name, conn, this.Out, make(chan []byte)}
 
 		this.sockets[uintptr(unsafe.Pointer(socket))] = socket
 
