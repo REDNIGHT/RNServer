@@ -144,5 +144,5 @@ func (this *AccountDB) UpdatePassword(i *UpdatePassword) {
 func (this *AccountDB) GetStateWarning(stateWarning func(name, warning string)) {
 	this.TestChanOverload(stateWarning, "inFind", len(this.inFind))
 
-	this.MongoDB.Node.GetStateWarning(stateWarning)
+	this.MongoDB.MNode.GetStateWarning(stateWarning)
 }

@@ -14,6 +14,6 @@ type IClose interface {
 }
 
 type IMessage interface {
-	SendCall() chan<- func(IMessage)
+	InCall() chan func(IMessage)
 	SendMessage(func(IMessage))
 }

@@ -43,7 +43,7 @@ func doPrintf(node IName, printLevel string, format string, a ...interface{}) *l
 
 //--------------------------------------------------------------------------------------------------------
 type Log struct {
-	Node
+	MNode
 }
 
 type logData struct {
@@ -55,7 +55,7 @@ type logData struct {
 }
 
 func NewLog(name string) *Log {
-	l := &Log{NewNode(name)}
+	l := &Log{NewMNode(name)}
 	if _log != nil {
 		l.Panic("_log != nil")
 	}
@@ -69,13 +69,13 @@ func baseLogPath() string {
 }
 
 func (this *Log) Log(logData *logData) {
-	this.SendCall() <- func(IMessage) {
+	this.InCall() <- func(IMessage) {
 		this.log(logData)
 	}
 }
 
 func (this *Log) LogByProxy(buffer []byte) {
-	this.SendCall() <- func(IMessage) {
+	this.InCall() <- func(IMessage) {
 		logData := &logData{}
 		json.Unmarshal(buffer, logData)
 		this.log(logData)
@@ -93,13 +93,13 @@ func (this *Log) log(logData *logData) {
 
 //----------------------------------------------------------------------------------------------------
 type LogProxy struct {
-	Node
+	MNode
 
 	Out func([]byte)
 }
 
 func NewLogProxy(name string) *LogProxy {
-	l := &LogProxy{NewNode(name), nil}
+	l := &LogProxy{NewMNode(name), nil}
 	if _log != nil {
 		l.Panic("_log != nil")
 	}
@@ -108,7 +108,7 @@ func NewLogProxy(name string) *LogProxy {
 }
 
 func (this *LogProxy) Log(logData *logData) {
-	this.SendCall() <- func(_ IMessage) {
+	this.InCall() <- func(_ IMessage) {
 		this.log(logData)
 	}
 }

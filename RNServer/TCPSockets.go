@@ -15,7 +15,7 @@ type SocketBuffer struct {
 	Buffer   []byte
 }
 type TCPSockets struct {
-	RNCore.Node
+	RNCore.MNode
 
 	MaxSocketCount int
 
@@ -34,7 +34,7 @@ type Socket struct {
 
 func NewTCPSockets(name string, maxSocketCount int) *TCPSockets {
 	return &TCPSockets{
-		Node:           RNCore.NewNode(name),
+		MNode:          RNCore.NewMNode(name),
 		MaxSocketCount: maxSocketCount,
 		sockets:        make(map[uintptr]*Socket),
 		socketsByName:  make(map[string]*Socket)}
@@ -45,7 +45,7 @@ func (this *TCPSockets) Out(outSocketsBuffer func(*SocketBuffer)) {
 }
 
 func (this *TCPSockets) AddSocket(conn net.Conn, name string) {
-	this.SendCall() <- func(_ RNCore.IMessage) {
+	this.InCall() <- func(_ RNCore.IMessage) {
 
 		if len(this.sockets) >= this.MaxSocketCount {
 			conn.Close()
@@ -67,7 +67,7 @@ func (this *TCPSockets) AddSocket(conn net.Conn, name string) {
 }
 
 func (this *TCPSockets) RemoveSocketByName(name string) {
-	this.SendCall() <- func(_ RNCore.IMessage) {
+	this.InCall() <- func(_ RNCore.IMessage) {
 		if socket, have := this.socketsByName[name]; have == true {
 			this.removeSocket(uintptr(unsafe.Pointer(socket)))
 		} else {
@@ -77,7 +77,7 @@ func (this *TCPSockets) RemoveSocketByName(name string) {
 }
 
 func (this *TCPSockets) RemoveSocket(socketId uintptr) {
-	this.SendCall() <- func(_ RNCore.IMessage) {
+	this.InCall() <- func(_ RNCore.IMessage) {
 		this.removeSocket(socketId)
 	}
 }
@@ -198,7 +198,7 @@ type _TCPSocketsStateInfo struct {
 }
 
 func (this *TCPSockets) GetStateInfo() *RNCore.StateInfo {
-	si := this.Node.GetStateInfo()
+	si := this.MNode.GetStateInfo()
 
 	si.Values = map[string]uint{
 		"maxSocketCount":     uint(this.MaxSocketCount),

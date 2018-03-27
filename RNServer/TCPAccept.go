@@ -1,31 +1,30 @@
 package RNServer
 
 import (
+	"RNCore"
 	"net"
 )
-import "RNCore"
 
 type TCPAccept struct {
-	RNCore.MinNode
-
-	ip       string
+	RNCore.Node
 	listener net.Listener
 
 	Out func(net.Conn)
 }
 
-func NewTCPAccept(name string, ip string) *TCPAccept {
-	return &TCPAccept{RNCore.NewMinNode(name), ip, nil, nil}
-}
+func NewTCPAccept(name, ip string) *TCPAccept {
+	this := &TCPAccept{RNCore.NewNode(name + " " + ip), nil, nil}
 
-func (this *TCPAccept) Run() {
-	l, err := net.Listen("tcp", this.ip)
+	l, err := net.Listen("tcp", ip)
 	if err != nil {
-		this.Error("err != nil  err=" + err.Error())
-		return
+		this.Panic("err != nil  err=" + err.Error())
 	}
 	this.listener = l
 
+	return this
+}
+
+func (this *TCPAccept) Run() {
 	//
 	for {
 		//l.(*net.TCPListener).SetDeadline(time.Now().Add(time.Second))

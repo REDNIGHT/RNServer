@@ -23,7 +23,7 @@ func AddNodeInfo(nodeInfo *NodeInfo) {
 }
 
 type State struct {
-	Node
+	MNode
 
 	//每隔5秒执行一次："*/5 * * * * ?"
 	//每隔1分钟执行一次："0 */1 * * * ?"
@@ -55,9 +55,7 @@ type StateWarning struct {
 }
 
 type IState interface {
-	IMessage
-
-	Name() string
+	//Name() string
 
 	GetStateInfo() *StateInfo
 
@@ -89,7 +87,7 @@ func NewStateInfo(node IName, inTotal uint) *StateInfo {
 }
 
 func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
-	this := &State{NewNode(name),
+	this := &State{NewMNode(name),
 
 		make([]*StateInfo, 0),
 		make([]*StateInfo, 0),
@@ -112,13 +110,13 @@ func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
 	if len(stateTickerSpec) <= 0 {
 		stateTickerSpec = "0 */1 * * * ?" //每分钟执行一次
 	}
-	c.AddFunc(stateTickerSpec, func() { this.SendCall() <- func(_ IMessage) { this.stateTicker() } })
+	c.AddFunc(stateTickerSpec, func() { this.InCall() <- func(_ IMessage) { this.stateTicker() } })
 
 	//
 	if len(saveMaxSpec) <= 0 {
 		saveMaxSpec = "0 0 6 * * ?" //每天6点执行一次
 	}
-	c.AddFunc(saveMaxSpec, func() { this.SendCall() <- func(_ IMessage) { this.saveMax() } })
+	c.AddFunc(saveMaxSpec, func() { this.InCall() <- func(_ IMessage) { this.saveMax() } })
 
 	//
 	if RNCDebug {
@@ -129,7 +127,7 @@ func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
 }
 
 func (this *State) AddNodeInfo(nodeInfo *NodeInfo) {
-	this.SendCall() <- func(IMessage) {
+	this.InCall() <- func(IMessage) {
 		if _, b := this.nodeInfoMap[nodeInfo.Name]; b == true {
 			this.Error("b := this.nodeInfoMap[nodeInfo.Name]; b == true  nodeInfo.Name=%v", nodeInfo.Name)
 		}
@@ -145,7 +143,7 @@ func (this *State) stateWarning() {
 	})
 }
 func (this *State) inStateWarning(name, warning string) {
-	this.SendCall() <- func(IMessage) {
+	this.InCall() <- func(IMessage) {
 		this.saveStateWarning(name, warning)
 	}
 }
@@ -168,20 +166,20 @@ func (this *State) stateTicker() {
 			}
 		})
 
-		this.SendCall() <- func(IMessage) {
+		this.InCall() <- func(IMessage) {
 			this.save()
 		}
 	}()
 }
 func (this *State) inStateInfo(stateInfo *StateInfo) {
-	this.SendCall() <- func(IMessage) {
+	this.InCall() <- func(IMessage) {
 		this.stateInfos = append(this.stateInfos, stateInfo)
 		this.stateInfoMap[stateInfo.key()] = stateInfo
 	}
 }
 
 func (this *State) InProxy(buffer []byte) {
-	this.SendCall() <- func(IMessage) {
+	this.InCall() <- func(IMessage) {
 		this.inProxy(buffer)
 	}
 }
@@ -395,7 +393,7 @@ func getRowBuffer(row []string) string {
 //----------------------------------------------------------------------------------------------------------------
 
 type StateProxy struct {
-	Node
+	MNode
 
 	//每隔5秒执行一次："*/5 * * * * ?"
 	//每隔1分钟执行一次："0 */1 * * * ?"
@@ -421,7 +419,7 @@ type proxyDataJ struct {
 }
 
 func NewStateProxy(name, stateTickerSpec, saveMaxSpec string) *StateProxy {
-	this := &StateProxy{NewNode(name), nil}
+	this := &StateProxy{NewMNode(name), nil}
 
 	if _State != nil {
 		this.Panic("_State != nil")
@@ -464,7 +462,7 @@ func (this *StateProxy) stateWarning() {
 }
 
 func (this *StateProxy) inStateWarning(name, warning string) {
-	this.SendCall() <- func(IMessage) {
+	this.InCall() <- func(IMessage) {
 		buffer, err := json.Marshal(&proxyDataJ{nil, nil, &StateWarning{name, warning}})
 		if err == nil {
 			this.Out(buffer)
@@ -475,7 +473,7 @@ func (this *StateProxy) inStateWarning(name, warning string) {
 }
 
 func (this *StateProxy) stateTicker() {
-	this.SendCall() <- func(IMessage) {
+	this.InCall() <- func(IMessage) {
 		Root().BroadcastMessage(func(node IMessage) {
 			if is, b := node.(IState); b == true {
 				this.inStateInfo(is.GetStateInfo())
@@ -484,7 +482,7 @@ func (this *StateProxy) stateTicker() {
 	}
 }
 func (this *StateProxy) inStateInfo(stateInfo *StateInfo) {
-	this.SendCall() <- func(IMessage) {
+	this.InCall() <- func(IMessage) {
 		buffer, err := json.Marshal(&proxyDataJ{stateInfo, nil, nil})
 		if err == nil {
 			this.Out(buffer)

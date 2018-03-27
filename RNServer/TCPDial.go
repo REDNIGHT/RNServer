@@ -7,7 +7,7 @@ import (
 import "RNCore"
 
 type TCPDial struct {
-	RNCore.MinNode
+	RNCore.Node
 
 	ip   string
 	conn net.Conn
@@ -21,7 +21,7 @@ type Name_Conn struct {
 }
 
 func NewTCPDial(name string, ip string) *TCPDial {
-	return &TCPDial{RNCore.NewMinNode(name), ip, nil, nil}
+	return &TCPDial{RNCore.NewNode(name + " " + ip), ip, nil, nil}
 }
 
 func (this *TCPDial) Run() {

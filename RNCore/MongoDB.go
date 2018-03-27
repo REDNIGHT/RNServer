@@ -5,14 +5,14 @@ import (
 )
 
 type MongoDB struct {
-	Node
+	MNode
 
 	Session    *mgo.Session
 	Collection *mgo.Collection
 }
 
 func NewMongoDB(name, url, user, pass, db, c string, indexKeys ...string) MongoDB {
-	mdb := MongoDB{NewNode(name), nil, nil}
+	mdb := MongoDB{NewMNode(name), nil, nil}
 
 	session, err := mgo.Dial(url)
 	if err != nil {
@@ -38,7 +38,7 @@ func NewMongoDB(name, url, user, pass, db, c string, indexKeys ...string) MongoD
 	return mdb
 }
 func (this *MongoDB) Close() {
-	this.Node.Close()
+	this.MNode.Close()
 
 	this.Session.Close()
 }

@@ -5,12 +5,12 @@ import (
 )
 
 type RedisDB struct {
-	Node
+	MNode
 	Conn redis.Conn
 }
 
 func NewRedisDB(name, url, password string, db int) RedisDB {
-	rdb := RedisDB{Node: NewNode(name)}
+	rdb := RedisDB{NewMNode(name), nil}
 
 	conn, err := redis.Dial("tcp", url, redis.DialPassword(password), redis.DialDatabase(db))
 	if err != nil {
@@ -22,7 +22,7 @@ func NewRedisDB(name, url, password string, db int) RedisDB {
 }
 
 func (this *RedisDB) Close() {
-	this.Node.Close()
+	this.MNode.Close()
 
 	this.Conn.Close()
 }

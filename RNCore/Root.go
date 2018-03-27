@@ -6,7 +6,7 @@ import (
 )
 
 type root struct {
-	Node
+	MNode
 	ns []IName
 }
 
@@ -17,7 +17,7 @@ func NewRoot(serverName string) *root {
 	if _root != nil {
 		panic("_root != nil")
 	}
-	_root = &root{NewNode(serverName), make([]IName, 0)}
+	_root = &root{NewMNode(serverName), make([]IName, 0)}
 	return _root
 }
 func Root() *root {
@@ -58,12 +58,12 @@ func (this *root) ForEach(f func(IName)) {
 	}
 }
 func (this *root) Broadcast(f func(IMessage)) {
-	this.SendCall() <- f
+	this.InCall() <- f
 
 	for i := 0; i < len(this.ns); i++ {
 		im, b := this.ns[i].(IMessage)
 		if b == true {
-			im.SendCall() <- f
+			im.InCall() <- f
 		}
 	}
 }
@@ -97,11 +97,11 @@ func (this *root) Run() {
 		sig := <-c
 		this.Log("closing down (signal: %v)", sig)
 
-		this.Node.Close() //这行代码可以退出下面的this.Node.Run()
+		this.MNode.Close() //这行代码可以退出下面的this.MNode.Run()
 	}()
 
 	//
-	this.Node.Run()
+	this.MNode.Run()
 }
 
 func (this *root) Close() {
