@@ -2,7 +2,7 @@ package RNCore
 
 import ()
 
-func mian() {
+/*func main() {
 	root := NewRoot("test...")
 
 	//root.Add(node)
@@ -11,4 +11,4 @@ func mian() {
 
 	//
 	root.Close()
-}
+}*/

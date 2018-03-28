@@ -9,6 +9,7 @@ type CallNode struct {
 	inCall chan func()
 }
 
+
 func NewCallNode() CallNode {
 	return CallNode{make(chan func(), InChanMinLen)}
 }

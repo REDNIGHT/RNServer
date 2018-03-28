@@ -28,6 +28,7 @@ func NewAccountDB(name, url, user, pass, db, c string) *AccountDB {
 	return &AccountDB{RNCore.NewMongoDB(name, url, user, pass, db, c), make(chan *FindAccount, RNCore.InChanLen)}
 }
 
+
 /*
 func (this *ex)example() {
 	ldb := NewAccountDB("", "", "", "")
