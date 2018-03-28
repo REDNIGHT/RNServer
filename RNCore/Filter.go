@@ -7,44 +7,31 @@ import (
 type Filter struct {
 	In func() (string, interface{})
 
-	outFilters []_FilterInfo
+	outFilters []func(inName string, v interface{}) bool
 
 	Out func(interface{})
 }
 
-type _FilterInfo struct {
-	filterName string
-	pickUp     bool
-	out        func(interface{})
-}
-
 func NewFilter() *Filter {
-	return &Filter{nil, make([]_FilterInfo, 0), nil}
+	return &Filter{nil, make([]func(string, interface{}) bool, 0), nil}
 }
 
-func (this *Filter) OutAddFilter(filterName string, pickUp bool, out func(interface{})) {
-	this.outFilters = append(this.outFilters, _FilterInfo{filterName, pickUp, out})
+func (this *Filter) OutAddFilter(outFilters ...func(inName string, v interface{}) bool) {
+	this.outFilters = append(this.outFilters, outFilters...)
 }
 
-func (this *Filter) Go() {
-	go func() {
-		for {
-			name, v := this.In()
-			pickUp := false
-			for _, f := range this.outFilters {
-				if name == f.filterName {
-					f.out(v)
-
-					if f.pickUp == true {
-						pickUp = f.pickUp
-					}
-				}
+func (this *Filter) Run() {
+	for {
+		name, v := this.In()
+		pickUp := false
+		for _, outFilter := range this.outFilters {
+			if outFilter(name, v) {
+				pickUp = true
 			}
-
-			if pickUp == false {
-				this.Out(v)
-			}
-
 		}
-	}()
+
+		if pickUp == false {
+			this.Out(v)
+		}
+	}
 }

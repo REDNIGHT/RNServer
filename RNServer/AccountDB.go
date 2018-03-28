@@ -15,11 +15,13 @@ type AccountDB struct {
 }
 
 type AccountData struct {
-	ID          string
-	LoginType   string //手机 邮箱 设备id...
-	Account     string
-	Password    string
-	AccountType string //普通用户 GM用户...
+	Id        string
+	LoginType string //手机 邮箱 设备id...
+	Account   string
+	Password  string
+	Date      string //注册日期
+
+	//AccountType string //普通用户 GM用户...
 }
 
 func NewAccountDB(name, url, user, pass, db, c string) *AccountDB {

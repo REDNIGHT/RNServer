@@ -19,7 +19,7 @@ func (this *Diversion) OutAdd(outs ...func(interface{})) {
 	this.outs = append(this.outs, outs...)
 }
 
-func (this *Diversion) Go() {
+func (this *Diversion) Run() {
 	for i := 0; i < len(this.outs); i++ {
 		go func() {
 			this.outs[i](this.In())
