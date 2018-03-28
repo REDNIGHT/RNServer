@@ -83,7 +83,7 @@ func (this *Log) LogByProxy(buffer []byte) {
 }
 
 func (this *Log) log(logData *logData) {
-	fmt.Println("%v>%v>%v", logData.NodeName, logData.Level, logData.Log)
+	fmt.Printf("%v>%v>%v", logData.NodeName, logData.Level, logData.Log)
 
 	csvFileName := fmt.Sprintf("%v\\%v.%v.%v.log.csv", baseLogPath(), logData.Time.Year(), logData.Time.Month(), logData.Time.Day())
 
@@ -114,7 +114,7 @@ func (this *LogProxy) Log(logData *logData) {
 }
 
 func (this *LogProxy) log(logData *logData) {
-	fmt.Println("%v>%v>%v", logData.NodeName, logData.Level, logData.Log)
+	fmt.Printf("%v>%v>%v", logData.NodeName, logData.Level, logData.Log)
 
 	buffer, err := json.Marshal(logData)
 	if err == nil {
