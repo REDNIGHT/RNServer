@@ -1,7 +1,6 @@
 package RNCore
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -19,19 +18,19 @@ func (this *Node) Type_Name() string { return reflect.TypeOf(this).String() + ".
 
 //
 func (this *Node) Log(format string, a ...interface{}) {
-	Print(this, printLogLevel, format, a)
+	Print(this, format, a)
 }
 func (this *Node) Warn(format string, a ...interface{}) {
-	Warn(this, printWarnLevel, format, a)
+	Warn(this, format, a)
 }
 func (this *Node) Error(format string, a ...interface{}) {
-	Error(this, printErrorLevel, format, a)
+	Error(this, format, a)
 }
 func (this *Node) Debug(format string, a ...interface{}) {
-	Debug(this, printDebugLevel, format, a)
+	Debug(this, format, a)
 }
 func (this *Node) Panic(format string, a ...interface{}) {
-	panic(this.Type_Name() + fmt.Sprintf(format, a...))
+	Panic(this, format, a)
 }
 
 //IState

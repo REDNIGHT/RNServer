@@ -14,10 +14,11 @@ type root struct {
 var _root *root
 
 func NewRoot(serverName string) *root {
+	this := &root{NewMNode(serverName), make([]IName, 0)}
 	if _root != nil {
-		panic("_root != nil")
+		this.Panic("_root != nil")
 	}
-	_root = &root{NewMNode(serverName), make([]IName, 0)}
+	_root = this
 	return _root
 }
 func Root() *root {
@@ -114,4 +115,3 @@ func (this *root) Close() {
 		this.Log("%v.Close()", ic)
 	}
 }
-

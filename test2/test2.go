@@ -1,7 +1,7 @@
 package main
 
 import (
-	"RNCore"
+	"../RNCore"
 )
 
 func main() {

@@ -1,8 +1,8 @@
 package RNCore
 
-import ()
+func main() {
+	defer SavePanic()
 
-/*func main() {
 	root := NewRoot("test...")
 
 	//root.Add(node)
@@ -11,4 +11,4 @@ import ()
 
 	//
 	root.Close()
-}*/
+}
