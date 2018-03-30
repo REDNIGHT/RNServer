@@ -142,6 +142,7 @@ func (this *TCPSockets) writeConnection(socket *Socket) {
 
 		err := this.write(socket.Conn, b)
 		if err != nil {
+			this.Error("err != nil  err=" + err.Error())
 			break
 		}
 	}
