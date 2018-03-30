@@ -46,6 +46,8 @@ func (this *ex)example() {
 */
 
 func (this *AccountDB) Run() {
+	defer RNCore.CatchPanic()
+
 	for {
 		this.InTotal++
 

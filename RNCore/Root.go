@@ -81,6 +81,8 @@ func (this *root) BroadcastMessage(f func(IMessage)) {
 }
 
 func (this *root) Run() {
+	defer CatchPanic()
+
 	//
 	for i := 0; i < len(this.ns); i++ {
 
@@ -101,7 +103,7 @@ func (this *root) Run() {
 		sig := <-c
 		this.Log("closing down (signal: %v)", sig)
 
-		this.MNode.Close() //这行代码可以退出上面的this.MNode.Run()
+		this.Close()
 	}()
 }
 
@@ -114,4 +116,6 @@ func (this *root) Close() {
 		}
 		this.Log("%v.Close()", ic)
 	}
+
+	this.MNode.Close()
 }

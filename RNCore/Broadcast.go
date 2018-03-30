@@ -1,8 +1,6 @@
 package RNCore
 
-import (
 //"time"
-)
 
 type Broadcast struct {
 	In func() interface{}
@@ -19,6 +17,8 @@ func (this *Broadcast) OutAdd(outs ...func(interface{})) {
 }
 
 func (this *Broadcast) Run() {
+
+	defer CatchPanic()
 
 	for {
 		v := this.In()

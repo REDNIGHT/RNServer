@@ -17,6 +17,8 @@ func (this *CallNode) InCall() chan<- func() {
 }
 
 func (this *CallNode) Run() {
+	defer CatchPanic()
+
 	for {
 		f := <-this.inCall
 		f()

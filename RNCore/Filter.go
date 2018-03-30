@@ -1,8 +1,6 @@
 package RNCore
 
-import (
 //"time"
-)
 
 type Filter struct {
 	In func() (string, interface{})
@@ -21,6 +19,8 @@ func (this *Filter) OutAddFilter(outFilters ...func(inName string, v interface{}
 }
 
 func (this *Filter) Run() {
+	defer CatchPanic()
+
 	for {
 		name, v := this.In()
 		pickUp := false

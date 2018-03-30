@@ -71,7 +71,7 @@ func removeTop3(s string) string {
 	return s
 }
 
-func SavePanic() {
+func CatchPanic() {
 	if r := recover(); r != nil {
 		_, b := r.(*_LogData)
 		if b == false {
@@ -80,7 +80,9 @@ func SavePanic() {
 		}
 	}
 
-	log0, b0 := _log.(*Log)
+	Root().Close()
+
+	/*log0, b0 := _log.(*Log)
 	log1, b1 := _log.(*LogProxy)
 	if b0 {
 		for len(log0.InCall()) > 0 || len(log0.InMessage()) > 0 {
@@ -91,7 +93,7 @@ func SavePanic() {
 		for len(log1.InCall()) > 0 || len(log1.InMessage()) > 0 {
 			time.Sleep(time.Millisecond * 10)
 		}
-	}
+	}*/
 }
 
 //--------------------------------------------------------------------------------------------------------

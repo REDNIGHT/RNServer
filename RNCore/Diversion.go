@@ -1,8 +1,6 @@
 package RNCore
 
-import (
 //"time"
-)
 
 //分流
 type Diversion struct {
@@ -20,6 +18,8 @@ func (this *Diversion) OutAdd(outs ...func(interface{})) {
 }
 
 func (this *Diversion) Run() {
+	defer CatchPanic()
+
 	for i := 0; i < len(this.outs); i++ {
 		go func() {
 			this.outs[i](this.In())

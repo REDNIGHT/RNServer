@@ -32,6 +32,8 @@ func (this *MNode) SendMessage(f func(IMessage)) {
 	<-this.inMessage
 }
 func (this *MNode) Run() {
+	defer CatchPanic()
+
 	for {
 		this.InTotal++
 

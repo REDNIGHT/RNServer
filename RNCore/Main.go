@@ -1,7 +1,7 @@
 package RNCore
 
 func main() {
-	defer SavePanic()
+	defer CatchPanic()
 
 	root := NewRoot("test...")
 
