@@ -52,7 +52,7 @@ func (this *TCPSockets) AddSocket(conn net.Conn, name string) {
 		//
 		socket := &Socket{name, conn, this.Out, make(chan []byte)}
 
-		this.sockets[uintptr(unsafe.Pointer(socket))] = socket
+		this.sockets[uintptr(socket)] = socket
 
 		if name != "" {
 			this.socketsByName[name] = socket
