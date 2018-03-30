@@ -6,7 +6,6 @@ import (
 	"net"
 	//"time"
 	"math"
-	"unsafe"
 
 	"../RNCore"
 )
@@ -66,7 +65,7 @@ func (this *TCPSockets) AddSocket(conn net.Conn, name string) {
 func (this *TCPSockets) RemoveSocketByName(name string) {
 	this.InCall() <- func(_ RNCore.IMessage) {
 		if socket, have := this.socketsByName[name]; have == true {
-			this.removeSocket(uintptr(unsafe.Pointer(socket)))
+			this.removeSocket(uintptr(socket))
 		} else {
 			this.Error("this.socketsByName have = false  name=" + name)
 		}
@@ -129,10 +128,10 @@ func (this *TCPSockets) readConnection(socket *Socket) {
 			break
 		}
 
-		socket.OutBuffer(&SocketBuffer{uintptr(unsafe.Pointer(socket)), buffer})
+		socket.OutBuffer(&SocketBuffer{uintptr(socket), buffer})
 	}
 
-	this.RemoveSocket(uintptr(unsafe.Pointer(socket)))
+	this.RemoveSocket(uintptr(socket))
 }
 
 func (this *TCPSockets) writeConnection(socket *Socket) {
@@ -147,7 +146,7 @@ func (this *TCPSockets) writeConnection(socket *Socket) {
 		}
 	}
 
-	this.RemoveSocket(uintptr(unsafe.Pointer(socket)))
+	this.RemoveSocket(uintptr(socket))
 }
 
 //
