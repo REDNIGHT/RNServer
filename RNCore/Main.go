@@ -1,6 +1,6 @@
 package RNCore
 
-func main() {
+/*func main() {
 	defer CatchPanic()
 
 	root := NewRoot("test...")
@@ -11,4 +11,4 @@ func main() {
 
 	//
 	root.Close()
-}
+}*/

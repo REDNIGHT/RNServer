@@ -5,6 +5,8 @@ import (
 )
 
 func main() {
+	defer RNCore.CatchPanic()
+
 	root := RNCore.NewRoot("test...")
 
 	//root.Add(node)
