@@ -54,6 +54,7 @@ func (this *TCPSockets) AddSocket(conn net.Conn, name string) {
 		this.sockets[uintptr(socket)] = socket
 
 		if name != "" {
+
 			this.socketsByName[name] = socket
 		}
 
