@@ -5,9 +5,10 @@ import (
 	"io"
 	"net"
 	//"time"
-	"RNCore"
 	"math"
 	"unsafe"
+
+	"../RNCore"
 )
 
 type SocketBuffer struct {

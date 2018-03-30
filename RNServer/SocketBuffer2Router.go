@@ -4,7 +4,7 @@ package RNServer
 //var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 import (
-	"RNCore"
+	"../RNCore"
 	//"time"
 )
 

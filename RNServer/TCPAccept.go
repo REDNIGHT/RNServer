@@ -1,8 +1,9 @@
 package RNServer
 
 import (
-	"RNCore"
 	"net"
+
+	"../RNCore"
 )
 
 type TCPAccept struct {

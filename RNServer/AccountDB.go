@@ -1,10 +1,11 @@
 package RNServer
 
 import (
-	"RNCore"
 	"errors"
-	"gopkg.in/mgo.v2/bson"
 	"strings"
+
+	"../RNCore"
+	"gopkg.in/mgo.v2/bson"
 	//"gopkg.in/mgo.v2"
 )
 
@@ -27,7 +28,6 @@ type AccountData struct {
 func NewAccountDB(name, url, user, pass, db, c string) *AccountDB {
 	return &AccountDB{RNCore.NewMongoDB(name, url, user, pass, db, c), make(chan *FindAccount, RNCore.InChanLen)}
 }
-
 
 /*
 func (this *ex)example() {

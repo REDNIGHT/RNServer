@@ -1,7 +1,7 @@
 package RNServer
 
 import (
-	"RNCore"
+	"../RNCore"
 	//"time"
 )
 

@@ -3,8 +3,9 @@ package RNServer
 import (
 	"net"
 	"time"
+
+	"../RNCore"
 )
-import "RNCore"
 
 type TCPDial struct {
 	RNCore.Node
