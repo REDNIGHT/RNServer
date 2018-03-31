@@ -6,20 +6,20 @@ type IName interface {
 	Name() string
 }
 
-type IRun interface {
-	Run()
-}
-
-type IClose interface {
-	Close()
-}
-
 type ICall interface {
 	InCall() chan<- func(ICall)
 }
 
 type IMessage interface {
 	SendMessage(func(IMessage))
+}
+
+type IRun interface {
+	Run()
+}
+
+type IClose interface {
+	Close()
 }
 
 func Type_Name(node interface{}) string {
