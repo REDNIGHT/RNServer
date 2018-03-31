@@ -7,14 +7,14 @@ import (
 
 type root struct {
 	MNode
-	ns []IName
+	ns []interface{}
 }
 
 //
 var _root *root
 
 func NewRoot(serverName string) *root {
-	this := &root{NewMNode(serverName), make([]IName, 0)}
+	this := &root{NewMNode(serverName), make([]interface{}, 0)}
 	if _root != nil {
 		this.Panic(nil, "_root != nil")
 	}
@@ -26,19 +26,28 @@ func Root() *root {
 }
 
 //
-func (this *root) Add(ns ...IName) {
+func getName(n interface{}) string {
+	if in, b := n.(IName); b {
+		return in.Name()
+	} else {
+		return Type_Name(n)
+	}
+}
+func (this *root) Add(ns ...interface{}) {
 	for _, n := range ns {
-		if this.Get(n.Name()) != nil {
-			this.Panic(nil, "Get(n.Name()) != nil  n.Name()="+n.Name())
+		name := getName(n)
+		if this.Get(name) != nil {
+			this.Panic(nil, "Get(name) != nil  name="+name)
 		}
 
 		this.ns = append(this.ns, n)
 	}
 }
-func (this *root) Get(name string) IName {
-	for i := 0; i < len(this.ns); i++ {
-		if this.ns[i].Name() == name {
-			return this.ns[i]
+func (this *root) Get(name string) interface{} {
+	for _, n := range this.ns {
+		node_name := getName(n)
+		if node_name == name {
+			return n
 		}
 	}
 
@@ -48,21 +57,21 @@ func (this *root) Get(name string) IName {
 func (this *root) GetCount() int {
 	return len(this.ns)
 }
-func (this *root) GetByIndex(index int) IName {
+func (this *root) GetByIndex(index int) interface{} {
 	return this.ns[index]
 }
-func (this *root) ForEach(f func(IName)) {
+func (this *root) ForEach(f func(interface{})) {
 	f(this)
 
 	for i := 0; i < len(this.ns); i++ {
 		f(this.ns[i])
 	}
 }
-func (this *root) Broadcast(f func(IMessage)) {
+func (this *root) Broadcast(f func(ICall)) {
 	this.InCall() <- f
 
 	for i := 0; i < len(this.ns); i++ {
-		im, b := this.ns[i].(IMessage)
+		im, b := this.ns[i].(ICall)
 		if b == true {
 			im.InCall() <- f
 		}
@@ -81,7 +90,7 @@ func (this *root) BroadcastMessage(f func(IMessage)) {
 }
 
 func (this *root) Run() {
-	defer this.CatchPanic()
+	//defer this.CatchPanic()
 
 	//
 	for i := 0; i < len(this.ns); i++ {
@@ -93,9 +102,6 @@ func (this *root) Run() {
 		}
 	}
 
-	//
-	this.MNode.Run()
-
 	go func() {
 		// close
 		c := make(chan os.Signal, 1)
@@ -105,6 +111,9 @@ func (this *root) Run() {
 
 		this.Close()
 	}()
+
+	//
+	this.MNode.Run()
 }
 
 func (this *root) Close() {

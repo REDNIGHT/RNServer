@@ -1,44 +1,39 @@
 package RNCore
 
-import (
-	"reflect"
-)
-
 type CallNode struct {
-	inCall chan func()
+	inCall chan func(ICall)
 }
 
 func NewCallNode() CallNode {
-	return CallNode{make(chan func(), InChanMinLen)}
+	return CallNode{make(chan func(ICall), InChanMinLen)}
 }
 
-func (this *CallNode) InCall() chan<- func() {
+func (this *CallNode) InCall() chan<- func(ICall) {
 	return this.inCall
 }
 
 func (this *CallNode) Run() {
-	defer this.CatchPanic()
+	defer this.CatchPanic(func(v interface{}) bool {
+		if RNCDebug {
+			return false
+		}
+		go this.Run()
+		return true
+	})
 
 	for {
 		f := <-this.inCall
-		f()
+		f(this)
 	}
 }
 
-func (this *CallNode) CatchPanic(vs ...interface{}) {
-	CatchPanic(this, vs)
-}
-func (this *CallNode) OnCatchPanic(v interface{}, node IPanic, vs ...interface{}) bool {
-	return false
-}
-func (this *CallNode) OnPanicExit() {
+func (this *CallNode) CatchPanic(onCatchPanic func(interface{}) bool) {
+	CatchPanic(onCatchPanic, this)
 }
 
 //
-func (this *CallNode) Name() string { return reflect.TypeOf(this).String() }
-func (this *CallNode) Type_Name() string {
-	return this.Name()
-}
+//func (this *CallNode) Name() string { return reflect.TypeOf(this).String() }
+//func (this *CallNode) Type_Name() string { return this.Name() }
 
 //
 func (this *CallNode) Log(format string, a ...interface{}) {

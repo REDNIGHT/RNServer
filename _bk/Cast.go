@@ -1,8 +1,6 @@
 package RNCore
 
-import (
 //"time"
-)
 
 //
 func CastTo(in func() interface{}, out func(in interface{})) {

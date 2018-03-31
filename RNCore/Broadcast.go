@@ -17,7 +17,14 @@ func (this *Broadcast) OutAdd(outs ...func(interface{})) {
 }
 
 func (this *Broadcast) Run() {
-	defer CatchPanic(nil)
+	defer CatchPanic(func(v interface{}) bool {
+		if RNCDebug {
+			return false
+		}
+		go this.Run()
+		return true
+	}, this)
+
 	for {
 		v := this.In()
 		for i := 0; i < len(this.outs); i++ {

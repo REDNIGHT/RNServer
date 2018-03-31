@@ -41,7 +41,7 @@ func NewTCPSockets(name string, maxSocketCount int) *TCPSockets {
 }
 
 func (this *TCPSockets) AddSocket(conn net.Conn, name string) {
-	this.InCall() <- func(_ RNCore.IMessage) {
+	this.InCall() <- func(_ RNCore.ICall) {
 
 		if len(this.sockets) >= this.MaxSocketCount {
 			conn.Close()
@@ -63,7 +63,7 @@ func (this *TCPSockets) AddSocket(conn net.Conn, name string) {
 }
 
 func (this *TCPSockets) RemoveSocketByName(name string) {
-	this.InCall() <- func(_ RNCore.IMessage) {
+	this.InCall() <- func(_ RNCore.ICall) {
 		if socket, have := this.socketsByName[name]; have == true {
 			this.removeSocket(uintptr(unsafe.Pointer(socket)))
 		} else {
@@ -73,7 +73,7 @@ func (this *TCPSockets) RemoveSocketByName(name string) {
 }
 
 func (this *TCPSockets) RemoveSocket(socketId uintptr) {
-	this.InCall() <- func(_ RNCore.IMessage) {
+	this.InCall() <- func(_ RNCore.ICall) {
 		this.removeSocket(socketId)
 	}
 }

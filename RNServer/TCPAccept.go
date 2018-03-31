@@ -26,8 +26,6 @@ func NewTCPAccept(name, ip string) *TCPAccept {
 }
 
 func (this *TCPAccept) Run() {
-	defer RNCore.CatchPanic(nil)
-
 	//
 	for {
 		//l.(*net.TCPListener).SetDeadline(time.Now().Add(time.Second))

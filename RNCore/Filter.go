@@ -19,7 +19,13 @@ func (this *Filter) OutAddFilter(outFilters ...func(inName string, v interface{}
 }
 
 func (this *Filter) Run() {
-	defer CatchPanic(nil)
+	defer CatchPanic(func(v interface{}) bool {
+		if RNCDebug {
+			return false
+		}
+		go this.Run()
+		return true
+	}, this)
 
 	for {
 		name, v := this.In()

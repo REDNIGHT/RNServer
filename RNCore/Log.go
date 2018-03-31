@@ -27,70 +27,66 @@ type iLog interface {
 var _log iLog
 
 //
-func Print(node IName, format string, a ...interface{}) {
+func Print(node interface{}, format string, a ...interface{}) {
 	_log.Log(newLogData(false, node, logLevel, format, a))
 }
-func Warn(node IName, format string, a ...interface{}) {
+func Warn(node interface{}, format string, a ...interface{}) {
 	_log.Log(newLogData(true, node, warnLevel, format, a))
 }
-func Error(node IName, format string, a ...interface{}) {
+func Error(node interface{}, format string, a ...interface{}) {
 	_log.Log(newLogData(true, node, errorLevel, format, a))
 }
-func Debug(node IName, format string, a ...interface{}) {
+func Debug(node interface{}, format string, a ...interface{}) {
 	_log.Log(newLogData(true, node, debugLevel, format, a))
 }
-func Panic(node IName, v interface{}, format string, a ...interface{}) {
+func Panic(node interface{}, v interface{}, format string, a ...interface{}) {
 	_log.Log(newLogData(true, node, panicLevel, fmt.Sprintf("%v    ", v)+format, a))
 	panic(&PanicInfo{node, v})
 }
 
 type PanicInfo struct {
-	Node IName
+	Node interface{}
 	V    interface{}
 }
 
-func CatchPanic(iPanic IPanic, vs ...interface{}) {
+func CatchPanic(onCatchPanic func(interface{}) bool, node interface{}) {
 	if r := recover(); r != nil {
-		panicInfo, b0 := r.(*PanicInfo)
+		_, b0 := r.(*PanicInfo)
 		if b0 == false {
-			ld := newLogData(false, _log.(IName), panicLevel, "panic:%v", r)
+			ld := newLogData(false, node, panicLevel, "panic:%v", r)
 			_log.Log(ld)
-		} else {
-			p, b1 := panicInfo.Node.(IPanic)
-			if b1 {
-				b2 := p.OnCatchPanic(panicInfo.V, iPanic, vs...)
-				if b2 {
-					return
-				}
+		}
+
+		if onCatchPanic != nil {
+			if onCatchPanic(r) {
+				return
 			}
 		}
-	} else {
-		iPanic.OnPanicExit()
-	}
 
-	Root().Close()
-
-	/*log0, b0 := _log.(*Log)
-	log1, b1 := _log.(*LogProxy)
-	if b0 {
-		for len(log0.InCall()) > 0 || len(log0.InMessage()) > 0 {
-			time.Sleep(time.Millisecond * 10)
+		Root().Close()
+		/*log0, b0 := _log.(*Log)
+		log1, b1 := _log.(*LogProxy)
+		if b0 {
+			for len(log0.InCall()) > 0 || len(log0.InMessage()) > 0 {
+				time.Sleep(time.Millisecond * 10)
+			}
 		}
+		if b1 {
+			for len(log1.InCall()) > 0 || len(log1.InMessage()) > 0 {
+				time.Sleep(time.Millisecond * 10)
+			}
+		}*/
 	}
-	if b1 {
-		for len(log1.InCall()) > 0 || len(log1.InMessage()) > 0 {
-			time.Sleep(time.Millisecond * 10)
-		}
-	}*/
 }
 
-func newLogData(stack bool, node IName, printLevel string, format string, a ...interface{}) *LogData {
+func newLogData(stack bool, node interface{}, printLevel string, format string, a ...interface{}) *LogData {
 	s := ""
 	if stack {
 		s = string(debug.Stack())
 		s = removeTop3(s)
 	}
-	logData := &LogData{time.Now(), Root().Name(), node.Type_Name(), printLevel, fmt.Sprintf(format, a...), s}
+
+	logData := &LogData{time.Now(), Root().Name(), Type_Name(node), printLevel, fmt.Sprintf(format, a...), s}
 	fmt.Printf("%v>%v>%v\n%v\n", logData.NodeName, logData.Level, logData.Log, logData.Stack)
 	return logData
 }
@@ -146,13 +142,13 @@ func baseLogPath() string {
 }
 
 func (this *Log) Log(logData *LogData) {
-	this.InCall() <- func(IMessage) {
+	this.InCall() <- func(ICall) {
 		this.log(logData)
 	}
 }
 
 func (this *Log) LogByProxy(buffer []byte) {
-	this.InCall() <- func(IMessage) {
+	this.InCall() <- func(ICall) {
 		logData := &LogData{}
 		json.Unmarshal(buffer, logData)
 		this.log(logData)
@@ -201,7 +197,7 @@ func (this *LogProxy) Close() {
 }
 
 func (this *LogProxy) Log(logData *LogData) {
-	this.InCall() <- func(_ IMessage) {
+	this.InCall() <- func(_ ICall) {
 		this.log(logData)
 	}
 }

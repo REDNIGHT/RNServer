@@ -46,7 +46,13 @@ func (this *ex)example() {
 */
 
 func (this *AccountDB) Run() {
-	defer this.CatchPanic()
+	defer this.CatchPanic(func(v interface{}) bool {
+		if RNCore.RNCDebug {
+			return false
+		}
+		go this.Run()
+		return true
+	})
 
 	for {
 		this.InTotal++

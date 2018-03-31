@@ -111,13 +111,13 @@ func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
 	if len(stateTickerSpec) <= 0 {
 		stateTickerSpec = "0 */1 * * * ?" //每分钟执行一次
 	}
-	c.AddFunc(stateTickerSpec, func() { this.InCall() <- func(_ IMessage) { this.stateTicker() } })
+	c.AddFunc(stateTickerSpec, func() { this.InCall() <- func(_ ICall) { this.stateTicker() } })
 
 	//
 	if len(saveMaxSpec) <= 0 {
 		saveMaxSpec = "0 0 6 * * ?" //每天6点执行一次
 	}
-	c.AddFunc(saveMaxSpec, func() { this.InCall() <- func(_ IMessage) { this.saveMax() } })
+	c.AddFunc(saveMaxSpec, func() { this.InCall() <- func(_ ICall) { this.saveMax() } })
 
 	//
 	if RNCDebug {
@@ -128,7 +128,7 @@ func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
 }
 
 func (this *State) AddNodeInfo(nodeInfo *NodeInfo) {
-	this.InCall() <- func(IMessage) {
+	this.InCall() <- func(ICall) {
 		if _, b := this.nodeInfoMap[nodeInfo.Name]; b == true {
 			this.Error("b := this.nodeInfoMap[nodeInfo.Name]; b == true  nodeInfo.Name=%v", nodeInfo.Name)
 		}
@@ -137,14 +137,14 @@ func (this *State) AddNodeInfo(nodeInfo *NodeInfo) {
 }
 
 func (this *State) stateWarning() {
-	Root().ForEach(func(node IName) {
+	Root().ForEach(func(node interface{}) {
 		if is, b := node.(IState); b == true {
 			is.GetStateWarning(this.inStateWarning)
 		}
 	})
 }
 func (this *State) inStateWarning(name, warning string) {
-	this.InCall() <- func(IMessage) {
+	this.InCall() <- func(ICall) {
 		this.saveStateWarning(name, warning)
 	}
 }
@@ -167,20 +167,20 @@ func (this *State) stateTicker() {
 			}
 		})
 
-		this.InCall() <- func(IMessage) {
+		this.InCall() <- func(ICall) {
 			this.save()
 		}
 	}()
 }
 func (this *State) inStateInfo(stateInfo *StateInfo) {
-	this.InCall() <- func(IMessage) {
+	this.InCall() <- func(ICall) {
 		this.stateInfos = append(this.stateInfos, stateInfo)
 		this.stateInfoMap[stateInfo.key()] = stateInfo
 	}
 }
 
 func (this *State) InProxy(buffer []byte) {
-	this.InCall() <- func(IMessage) {
+	this.InCall() <- func(ICall) {
 		this.inProxy(buffer)
 	}
 }
@@ -455,7 +455,7 @@ func (this *StateProxy) AddNodeInfo(nodeInfo *NodeInfo) {
 }
 
 func (this *StateProxy) stateWarning() {
-	Root().ForEach(func(node IName) {
+	Root().ForEach(func(node interface{}) {
 		if is, b := node.(IState); b == true {
 			is.GetStateWarning(this.inStateWarning)
 		}
@@ -463,7 +463,7 @@ func (this *StateProxy) stateWarning() {
 }
 
 func (this *StateProxy) inStateWarning(name, warning string) {
-	this.InCall() <- func(IMessage) {
+	this.InCall() <- func(ICall) {
 		buffer, err := json.Marshal(&proxyDataJ{nil, nil, &StateWarning{name, warning}})
 		if err == nil {
 			this.Out(buffer)
@@ -474,7 +474,7 @@ func (this *StateProxy) inStateWarning(name, warning string) {
 }
 
 func (this *StateProxy) stateTicker() {
-	this.InCall() <- func(IMessage) {
+	this.InCall() <- func(ICall) {
 		Root().BroadcastMessage(func(node IMessage) {
 			if is, b := node.(IState); b == true {
 				this.inStateInfo(is.GetStateInfo())
@@ -483,7 +483,7 @@ func (this *StateProxy) stateTicker() {
 	}
 }
 func (this *StateProxy) inStateInfo(stateInfo *StateInfo) {
-	this.InCall() <- func(IMessage) {
+	this.InCall() <- func(ICall) {
 		buffer, err := json.Marshal(&proxyDataJ{stateInfo, nil, nil})
 		if err == nil {
 			this.Out(buffer)

@@ -1,13 +1,9 @@
 package RNCore
 
+import "reflect"
+
 type IName interface {
 	Name() string
-	Type_Name() string
-}
-
-type IPanic interface {
-	OnCatchPanic(v interface{}, node IPanic, vs ...interface{}) bool
-	OnPanicExit()
 }
 
 type IRun interface {
@@ -18,7 +14,21 @@ type IClose interface {
 	Close()
 }
 
+type ICall interface {
+	InCall() chan<- func(ICall)
+}
+
 type IMessage interface {
-	InCall() chan func(IMessage)
 	SendMessage(func(IMessage))
+}
+
+func Type_Name(node interface{}) string {
+	if node == nil {
+		return "nil"
+	}
+	tn := reflect.TypeOf(node).String()
+	if in, b := node.(IName); b {
+		tn += "." + in.Name()
+	}
+	return tn
 }
