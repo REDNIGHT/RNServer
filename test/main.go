@@ -14,37 +14,13 @@ package main
 
 import (
 	"fmt"
-	"time"
+	"runtime"
 )
 
-func catchPanic(v string) {
-	if err := recover(); err != nil {
-		//debug.PrintStack()
-		fmt.Printf("%v  %v\n", v, err)
-		return
-	}
-	fmt.Println("catchPanic=" + v)
+func rc() {
+	_, f, l, _ := runtime.Caller(0)
+	fmt.Printf("%v  %v", f, l)
 }
 func main() {
-	defer catchPanic("111")
-
-	fmt.Println("begin")
-
-	go func() {
-		//defer catchPanic("222")
-		panic("aaaaaaaaa fuck this world!")
-	}()
-	go func() {
-		time.Sleep(time.Second)
-
-		//defer catchPanic("333")
-		panic("bbbbbbbbb fuck this world!")
-	}()
-
-	time.Sleep(time.Second * 2)
-	fmt.Println("end")
-
-	panic("ccccccccc fuck this world!")
-
-	//fmt.Println("end")
+	rc()
 }
