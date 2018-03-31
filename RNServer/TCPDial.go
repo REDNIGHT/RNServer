@@ -26,7 +26,7 @@ func NewTCPDial(name string, ip string) *TCPDial {
 }
 
 func (this *TCPDial) Run() {
-	defer RNCore.CatchPanic()
+	defer RNCore.CatchPanic(nil)
 
 	for {
 		//

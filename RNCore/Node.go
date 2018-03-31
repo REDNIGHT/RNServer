@@ -29,8 +29,8 @@ func (this *Node) Error(format string, a ...interface{}) {
 func (this *Node) Debug(format string, a ...interface{}) {
 	Debug(this, format, a)
 }
-func (this *Node) Panic(format string, a ...interface{}) {
-	Panic(this, format, a)
+func (this *Node) Panic(v interface{}, format string, a ...interface{}) {
+	Panic(this, v, format, a)
 }
 
 //IState

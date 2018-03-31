@@ -17,14 +17,11 @@ func (this *Broadcast) OutAdd(outs ...func(interface{})) {
 }
 
 func (this *Broadcast) Run() {
-
-	defer CatchPanic()
-
+	defer CatchPanic(nil)
 	for {
 		v := this.In()
 		for i := 0; i < len(this.outs); i++ {
 			this.outs[i](v)
 		}
 	}
-
 }

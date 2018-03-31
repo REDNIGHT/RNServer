@@ -14,7 +14,7 @@ func NewRedisDB(name, url, password string, db int) RedisDB {
 
 	conn, err := redis.Dial("tcp", url, redis.DialPassword(password), redis.DialDatabase(db))
 	if err != nil {
-		rdb.Panic(err.Error())
+		rdb.Panic(err, "err != nil")
 	}
 	rdb.Conn = conn
 

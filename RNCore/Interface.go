@@ -5,6 +5,11 @@ type IName interface {
 	Type_Name() string
 }
 
+type IPanic interface {
+	OnCatchPanic(v interface{}, node IPanic, vs ...interface{}) bool
+	OnPanicExit()
+}
+
 type IRun interface {
 	Run()
 }

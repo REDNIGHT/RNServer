@@ -17,12 +17,21 @@ func (this *CallNode) InCall() chan<- func() {
 }
 
 func (this *CallNode) Run() {
-	defer CatchPanic()
+	defer this.CatchPanic()
 
 	for {
 		f := <-this.inCall
 		f()
 	}
+}
+
+func (this *CallNode) CatchPanic(vs ...interface{}) {
+	CatchPanic(this, vs)
+}
+func (this *CallNode) OnCatchPanic(v interface{}, node IPanic, vs ...interface{}) bool {
+	return false
+}
+func (this *CallNode) OnPanicExit() {
 }
 
 //
@@ -44,6 +53,6 @@ func (this *CallNode) Error(format string, a ...interface{}) {
 func (this *CallNode) Debug(format string, a ...interface{}) {
 	Debug(this, format, a)
 }
-func (this *CallNode) Panic(format string, a ...interface{}) {
-	Panic(this, format, a)
+func (this *CallNode) Panic(v interface{}, format string, a ...interface{}) {
+	Panic(this, v, format, a)
 }

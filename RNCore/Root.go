@@ -16,7 +16,7 @@ var _root *root
 func NewRoot(serverName string) *root {
 	this := &root{NewMNode(serverName), make([]IName, 0)}
 	if _root != nil {
-		this.Panic("_root != nil")
+		this.Panic(nil, "_root != nil")
 	}
 	_root = this
 	return _root
@@ -29,7 +29,7 @@ func Root() *root {
 func (this *root) Add(ns ...IName) {
 	for _, n := range ns {
 		if this.Get(n.Name()) != nil {
-			this.Panic("Get(n.Name()) != nil  n.Name()=" + n.Name())
+			this.Panic(nil, "Get(n.Name()) != nil  n.Name()="+n.Name())
 		}
 
 		this.ns = append(this.ns, n)
@@ -81,7 +81,7 @@ func (this *root) BroadcastMessage(f func(IMessage)) {
 }
 
 func (this *root) Run() {
-	defer CatchPanic()
+	defer this.CatchPanic()
 
 	//
 	for i := 0; i < len(this.ns); i++ {

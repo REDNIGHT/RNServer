@@ -32,7 +32,7 @@ func (this *MNode) SendMessage(f func(IMessage)) {
 	<-this.inMessage
 }
 func (this *MNode) Run() {
-	defer CatchPanic()
+	defer this.CatchPanic()
 
 	for {
 		this.InTotal++
@@ -62,6 +62,15 @@ func (this *MNode) OnMessage(f func(IMessage)) (close bool) {
 		//CloseSig
 		return true
 	}
+}
+
+func (this *MNode) CatchPanic(vs ...interface{}) {
+	CatchPanic(this, vs)
+}
+func (this *MNode) OnCatchPanic(v interface{}, node IPanic, vs ...interface{}) bool {
+	return false
+}
+func (this *MNode) OnPanicExit() {
 }
 
 //

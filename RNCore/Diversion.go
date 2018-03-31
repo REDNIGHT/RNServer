@@ -18,8 +18,7 @@ func (this *Diversion) OutAdd(outs ...func(interface{})) {
 }
 
 func (this *Diversion) Run() {
-	defer CatchPanic()
-
+	defer CatchPanic(nil)
 	for i := 0; i < len(this.outs); i++ {
 		go func() {
 			this.outs[i](this.In())

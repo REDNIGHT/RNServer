@@ -6,10 +6,11 @@ package RNCore
 import (
 	"fmt"
 	//"reflect"
-	"github.com/robfig/cron"
 	"io/ioutil"
 	"os"
 	"time"
+
+	"github.com/robfig/cron"
 )
 
 type iState interface {
@@ -97,7 +98,7 @@ func NewState(name string, stateTickerSpec string, saveMaxSpec string) *State {
 		make(map[string]*NodeInfo)}
 
 	if _State != nil {
-		this.Panic("_State != nil")
+		this.Panic(nil, "_State != nil")
 	}
 	_State = this
 
@@ -422,7 +423,7 @@ func NewStateProxy(name, stateTickerSpec, saveMaxSpec string) *StateProxy {
 	this := &StateProxy{NewMNode(name), nil}
 
 	if _State != nil {
-		this.Panic("_State != nil")
+		this.Panic(nil, "_State != nil")
 	}
 	_State = this
 

@@ -18,7 +18,7 @@ func NewTCPAccept(name, ip string) *TCPAccept {
 
 	l, err := net.Listen("tcp", ip)
 	if err != nil {
-		this.Panic("err != nil  err=" + err.Error())
+		this.Panic(err, "err != nil")
 	}
 	this.listener = l
 
@@ -26,7 +26,7 @@ func NewTCPAccept(name, ip string) *TCPAccept {
 }
 
 func (this *TCPAccept) Run() {
-	defer RNCore.CatchPanic()
+	defer RNCore.CatchPanic(nil)
 
 	//
 	for {
